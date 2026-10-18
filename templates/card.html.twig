@@ -1,0 +1,25 @@
+{#
+The Sliding Fee Discount card on the patient dashboard.
+
+@package   OpenEMR
+@author    anun333 <anun333@posteo.net>
+@copyright Copyright (c) 2026 anun333 <anun333@posteo.net>
+@license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
+#}
+
+{% extends "patient/card/card_base.html.twig" %}
+
+{% block content %}
+<div class="text pl-1">
+    {% if not hasSchedule %}
+        <p class="text-muted mb-1">{{ "The clinic has not set up its sliding fee schedule."|xlt }}</p>
+    {% else %}
+        <p class="mb-1 {{ overdue ? 'text-danger' : '' }}"><strong>{{ status|text }}</strong></p>
+        {% if detail %}<p class="small text-muted mb-1">{{ detail|text }}</p>{% endif %}
+        {% if due %}<p class="small mb-1">{{ "Re-assess by"|xlt }} {{ due|text }}</p>{% endif %}
+        {% if assessUrl %}
+            <a class="btn btn-sm btn-outline-primary" href="{{ assessUrl|attr }}" onclick="top.restoreSession()">{{ "Assessments and visit discounts"|xlt }}</a>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

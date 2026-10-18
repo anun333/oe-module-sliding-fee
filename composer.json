@@ -1,0 +1,49 @@
+{
+    "name": "anun333/oe-module-sliding-fee",
+    "description": "Sliding fee discount program for OpenEMR, following HRSA's Health Center Program requirements: the clinic's schedule checked against Compliance Manual Chapter 9, each patient's income assessment, the discount each visit is owed, and the utilization figures the program's evaluation needs",
+    "type": "openemr-module",
+    "license": "GPL-3.0-or-later",
+    "keywords": [
+        "openemr",
+        "openemr-module",
+        "sliding-fee",
+        "fqhc",
+        "hrsa",
+        "health-center"
+    ],
+    "authors": [
+        {
+            "name": "anun333",
+            "email": "anun333@posteo.net"
+        }
+    ],
+    "require": {
+        "php": ">=8.3",
+        "openemr/oe-module-installer-plugin": "^0.1.5"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "OpenHealthcare\\SlidingFee\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "OpenHealthcare\\SlidingFee\\Tests\\": "tests/"
+        },
+        "files": [
+            "tests/stubs.php"
+        ]
+    },
+    "config": {
+        "allow-plugins": {
+            "openemr/oe-module-installer-plugin": true
+        }
+    },
+    "support": {
+        "issues": "https://github.com/anun333/oe-module-sliding-fee/issues",
+        "source": "https://github.com/anun333/oe-module-sliding-fee"
+    }
+}
