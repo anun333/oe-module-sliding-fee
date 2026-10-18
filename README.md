@@ -101,7 +101,7 @@ Tested with synthetic data on OpenEMR 8.4.1 (Docker image `openemr/openemr:8.4.1
 - produces the evaluation report and its CSV;
 - removes everything and puts Demographics back.
 
-It uses OpenEMR features present since 8.1.0, but it hasn't been run on any other version, master included. It needs PHP 8.3 or later.
+The same check passes on current master (8.5.0-dev, 1faefbbeb9, 2026-10-18). There the visit page says to post the discount at checkout, which records its reason from 8.5. It uses OpenEMR features present since 8.1.0, but it hasn't been run on 8.1 to 8.4.0. It needs PHP 8.3 or later.
 
 ## Development
 
