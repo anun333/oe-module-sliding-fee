@@ -88,8 +88,8 @@ As written in the source; whether they behave correctly for a given user is not 
 |---|---|---|
 | PHP logic (`src/`) | 15 | 1422 |
 | pages (`public/`) | 6 | 877 |
-| tools (`tools/`) | 1 | 568 |
-| tests (`tests/`, `phpunit.xml.dist`) | 3 | 353 |
+| tools (`tools/`) | 1 | 574 |
+| tests (`tests/`, `phpunit.xml.dist`) | 4 | 398 |
 | module wiring | 5 | 145 |
 | other | 2 | 72 |
 | install SQL (`sql/`) | 1 | 43 |
