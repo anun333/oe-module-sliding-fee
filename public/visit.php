@@ -38,11 +38,10 @@ $session = SessionWrapperFactory::getInstance()->getActiveSession();
 $pid = (int)($_GET['pid'] ?? 0);
 $encounter = (int)($_GET['encounter'] ?? 0);
 $context = Context::load();
-$schedule = $context->schedule;
-if ($schedule === null) {
+if ($context->schedule === null) {
     die(xlt('The clinic has not set up its sliding fee schedule yet.'));
 }
-$visit = (new VisitRepository())->visit($pid, $encounter, $schedule->reasons);
+$visit = (new VisitRepository())->visit($pid, $encounter, $context->allReasons());
 $patient = QueryUtils::fetchRecords('SELECT `fname`, `lname`, `pubpid` FROM `patient_data` WHERE `pid` = ?', [$pid])[0] ?? null;
 if ($visit === null || $patient === null) {
     die(xlt('No such visit.'));
@@ -50,6 +49,8 @@ if ($visit === null || $patient === null) {
 EventAuditLogger::getInstance()->newEvent('patient-record-select', (string)$session->get('authUser'), (string)$session->get('authProvider'), 1,
     "Sliding Fee Discount: visit $encounter viewed", $pid);
 
+// The visit's own schedule: a service schedule that names its category, else the main one.
+$schedule = $context->scheduleFor($visit['category']) ?? $context->schedule;
 $inForce = Assessment::inForce((new AssessmentRepository())->forPatient($pid), $visit['date'], $schedule->reassessMonths);
 $placed = $inForce?->on($schedule, $context->guidelines);
 $result = VisitDiscount::compute($schedule, $placed, $visit['fees'], $visit['insurancePaid'], $visit['insuranceAdjusted'],
@@ -70,6 +71,9 @@ $discountReasonAtCheckout = is_file(OEGlobalsBag::getInstance()->getProjectDir()
     <p><a href="<?php echo attr(Context::url('patient.php', ['pid' => $pid])); ?>"><?php echo xlt('Assessments for this patient'); ?></a></p>
 
     <table class="table table-sm w-auto" id="figures">
+        <?php if (count($context->inForce) > 1) { ?>
+        <tr><th><?php echo xlt('Schedule'); ?></th><td id="schedule-name" data-service="<?php echo attr($schedule->service); ?>"><?php echo text($schedule->isMain() ? xl('Main schedule') : $schedule->name); ?></td></tr>
+        <?php } ?>
         <tr><th><?php echo xlt('Pay class on the date of service'); ?></th><td data-class="<?php echo attr($result['class']); ?>"><?php echo text(Labels::payClass($result['class'], $schedule)); ?></td></tr>
         <tr><th><?php echo xlt('Charges at full fee'); ?></th><td class="text-right"><?php echo text(Labels::money($visit['fees'])); ?></td></tr>
         <tr><th><?php echo xlt('Paid and adjusted by insurance'); ?></th><td class="text-right"><?php echo text(Labels::money($visit['insurancePaid'] + $visit['insuranceAdjusted'])); ?></td></tr>

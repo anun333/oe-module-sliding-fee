@@ -6,6 +6,11 @@
  * guidelines, each a percentage off the fee or a flat charge per visit. Above the last
  * class there is no discount.
  *
+ * A clinic has a main schedule and may add one per service or delivery method, such as
+ * dental (HRSA Compliance Manual Chapter 9, element d), each covering the visit
+ * categories it names. The guidelines region and year and the re-assessment period
+ * belong to the program, so a service schedule takes them from the main one.
+ *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
  * @author    anun333 <anun333@posteo.net>
@@ -26,6 +31,8 @@ final class Schedule
 
     public const AT_OR_BELOW_100 = 'at_or_below_100';
     public const NO_DISCOUNT = 'no_discount';
+    /** The service key of the main schedule, which covers every visit no other schedule claims. */
+    public const MAIN = 'main';
 
     /**
      * @param string                                                     $atOrBelow100 FULL or NOMINAL
@@ -33,6 +40,9 @@ final class Schedule
      * @param list<array{label: string, upTo: float, method: string, value: float}> $classes in order; upTo is the
      *        highest percentage of the guidelines in the class; value is the percentage off (PERCENT) or the charge (FLAT)
      * @param list<string>                                               $reasons      Adjustment Reasons (option ids) posted as sliding fee discounts
+     * @param string                                                     $service      MAIN, or the key of a service schedule
+     * @param string                                                     $name         what staff call a service schedule, such as Dental
+     * @param list<int>                                                  $categories   the visit categories a service schedule covers
      */
     public function __construct(
         public readonly string $region,
@@ -44,7 +54,47 @@ final class Schedule
         public readonly array $reasons = [],
         public readonly bool $otherFundingAbove200 = false,
         public readonly ?string $approvedOn = null,
+        public readonly string $service = self::MAIN,
+        public readonly string $name = '',
+        public readonly array $categories = [],
     ) {
+    }
+
+    public function isMain(): bool
+    {
+        return $this->service === self::MAIN;
+    }
+
+    /** This service schedule with the program's guidelines and re-assessment period, from the main schedule. */
+    public function withProgram(self $main): self
+    {
+        return new self($main->region, $main->year, $this->atOrBelow100, $this->nominal, $this->classes, $main->reassessMonths,
+            $this->reasons, $this->otherFundingAbove200, $this->approvedOn, $this->service, $this->name, $this->categories);
+    }
+
+    /**
+     * The schedule for a visit: the service schedule that names its category, else the main one.
+     *
+     * @param list<self> $schedules the main schedule and any service schedules, as in force
+     */
+    public static function forCategory(array $schedules, int $category): ?self
+    {
+        $main = null;
+        foreach ($schedules as $schedule) {
+            if ($schedule->isMain()) {
+                $main = $schedule;
+            } elseif ($category > 0 && in_array($category, $schedule->categories, true)) {
+                return $schedule;
+            }
+        }
+        return $main;
+    }
+
+    /** A service key from a schedule's name: lowercase letters, digits and dashes, never MAIN. */
+    public static function serviceKey(string $name): string
+    {
+        $key = trim((string)preg_replace('/[^a-z0-9]+/', '-', strtolower($name)), '-');
+        return $key === '' || $key === self::MAIN ? 'service-' . substr(md5($name), 0, 6) : $key;
     }
 
     /**
@@ -104,6 +154,9 @@ final class Schedule
             'reasons' => $this->reasons,
             'otherFundingAbove200' => $this->otherFundingAbove200,
             'approvedOn' => $this->approvedOn,
+            'service' => $this->service,
+            'name' => $this->name,
+            'categories' => $this->categories,
         ];
     }
 
@@ -130,6 +183,12 @@ final class Schedule
             static fn(string $r): bool => $r !== '',
         ));
         $approved = trim((string)($data['approvedOn'] ?? ''));
+        $service = (string)($data['service'] ?? self::MAIN);
+        $categories = array_values(array_unique(array_filter(
+            array_map(static fn($c): int => is_numeric($c) ? (int)$c : 0, is_array($data['categories'] ?? null) ? $data['categories'] : []),
+            static fn(int $c): bool => $c > 0,
+        )));
+        sort($categories);
         return new self(
             in_array($data['region'] ?? null, PovertyGuidelines::REGIONS, true) ? (string)$data['region'] : 'contiguous',
             is_numeric($data['year'] ?? null) ? (int)$data['year'] : 0,
@@ -140,6 +199,9 @@ final class Schedule
             $reasons,
             !empty($data['otherFundingAbove200']),
             preg_match('/^\d{4}-\d{2}-\d{2}$/', $approved) ? $approved : null,
+            preg_match('/^[a-z0-9-]+$/', $service) === 1 ? $service : self::MAIN,
+            trim((string)($data['name'] ?? '')),
+            $service === self::MAIN ? [] : $categories,
         );
     }
 }

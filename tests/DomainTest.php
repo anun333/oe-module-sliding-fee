@@ -7,6 +7,7 @@ namespace OpenHealthcare\SlidingFee\Tests;
 use OpenHealthcare\SlidingFee\Domain\Assessment;
 use OpenHealthcare\SlidingFee\Domain\Evaluation;
 use OpenHealthcare\SlidingFee\Domain\PovertyGuidelines;
+use OpenHealthcare\SlidingFee\Domain\Reassessment;
 use OpenHealthcare\SlidingFee\Domain\Schedule;
 use OpenHealthcare\SlidingFee\Domain\ScheduleCheck;
 use OpenHealthcare\SlidingFee\Domain\VisitDiscount;
@@ -231,6 +232,62 @@ final class DomainTest extends TestCase
      * @param list<array{label: string, upTo: float, method: string, value: float}>|null $classes
      * @param list<string>                                                               $reasons
      */
+    public function testAServiceScheduleCoversItsVisitCategoriesAndTakesTheProgramFromTheMainOne(): void
+    {
+        $main = self::schedule();
+        $dental = Schedule::fromArray([
+            'region' => 'alaska', 'year' => 2025, 'reassessMonths' => 6, 'atOrBelow100' => 'nominal', 'nominal' => 10,
+            'classes' => [self::c('A', 150, 'flat', 20), self::c('B', 175, 'flat', 30), self::c('C', 200, 'flat', 40)],
+            'service' => 'dental', 'name' => 'Dental', 'categories' => ['14', 12, 0, 'x', 14],
+        ])->withProgram($main);
+        $this->assertSame([12, 14], $dental->categories, 'kept as numbers, once each, in order');
+        $this->assertSame(['contiguous', 2026, 12], [$dental->region, $dental->year, $dental->reassessMonths], 'the program settings are the main schedule\'s');
+        $this->assertSame(10.0, $dental->nominal, 'its own nominal charge: one per schedule');
+        $this->assertSame($dental->toArray(), Schedule::fromArray($dental->toArray())->toArray(), 'it survives its storage');
+        $this->assertSame($dental, Schedule::forCategory([$main, $dental], 14));
+        $this->assertSame($main, Schedule::forCategory([$main, $dental], 9), 'any other category uses the main schedule');
+        $this->assertSame($main, Schedule::forCategory([$main, $dental], 0), 'and so does a visit with no category');
+        $this->assertNull(Schedule::forCategory([$dental], 9), 'no main schedule, no schedule for other visits');
+        $this->assertSame([], Schedule::fromArray(['categories' => [5]])->categories, 'the main schedule covers everything, so it names no categories');
+        $this->assertSame('main', Schedule::fromArray(['service' => 'Not a key!'])->service);
+        $this->assertSame('dental-clinic', Schedule::serviceKey(' Dental clinic '));
+        $this->assertNotSame(Schedule::MAIN, Schedule::serviceKey('Main'));
+    }
+
+    public function testAVisitIsPlacedOnItsOwnSchedulesClasses(): void
+    {
+        $main = self::schedule();
+        $dental = new Schedule('contiguous', 2026, Schedule::FULL, 0, [self::c('Low', 150, 'percent', 60), self::c('Mid', 175, 'percent', 40), self::c('High', 200, 'percent', 20)],
+            12, ['Sliding fee discount'], false, null, 'dental', 'Dental', [14]);
+        $a = new Assessment(1, 7, new \DateTimeImmutable('2026-02-01'), Assessment::DOCUMENTS, 30000, 2, null, 'B');
+        $placed = $a->on(Schedule::forCategory([$main, $dental], 14) ?? $main, self::guidelines());
+        $this->assertSame('Low', $placed->classLabel, '139% of the 2-person guideline ($21,640) is B on the main schedule but Low on Dental');
+        $this->assertSame('B', $a->on($main, self::guidelines())->classLabel);
+        $result = VisitDiscount::compute($dental, $placed, 100.0, 0, 0, 0, 0, 0, false, true);
+        $this->assertSame(40.0, $result['charge'], '60% off on the dental schedule');
+    }
+
+    public function testReassessmentsDueAreThoseNeverAssessedRunOutOrRunningOutSoon(): void
+    {
+        $today = new \DateTimeImmutable(self::TODAY);
+        $visit = new \DateTimeImmutable('2026-09-01');
+        $at = static fn(int $pid, string $on): Assessment => new Assessment($pid, $pid, new \DateTimeImmutable($on), Assessment::DOCUMENTS, 20000, 2, 92.0, Schedule::AT_OR_BELOW_100);
+        $due = Reassessment::due(
+            [1 => $visit, 2 => $visit, 3 => $visit, 4 => $visit, 5 => $visit],
+            [
+                2 => [$at(2, '2025-09-01'), $at(2, '2025-10-01')],  // ran out 2026-10-01
+                3 => [$at(3, '2025-11-05')],                        // runs out 2026-11-05, within 30 days
+                4 => [$at(4, '2026-03-01')],                        // good until 2027-03-01
+                5 => [$at(5, '2027-01-01')],                        // dated in the future: not in force yet
+            ],
+            $today, 12, 30,
+        );
+        $this->assertSame([[1, Reassessment::NEVER], [5, Reassessment::NEVER], [2, Reassessment::EXPIRED], [3, Reassessment::SOON]],
+            array_map(static fn(array $r): array => [$r['pid'], $r['status']], $due), 'never assessed first, then by due date; 4 is not due');
+        $this->assertSame('2026-10-01', $due[2]['dueOn']?->format('Y-m-d'), 'from the latest assessment, not the first');
+        $this->assertSame([], Reassessment::due([], [], $today, 12, 30));
+    }
+
     private static function schedule(
         string $region = 'contiguous',
         int $year = 2026,

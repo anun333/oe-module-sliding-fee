@@ -31,7 +31,24 @@ if (!AclMain::aclCheckCore('admin', 'super')) {
 $session = SessionWrapperFactory::getInstance()->getActiveSession();
 $context = Context::load();
 $today = new DateTimeImmutable('today');
-$schedule = $context->schedule;
+$main = $context->schedule;
+// Which schedule: the main one, a service schedule by its key, or 'new' to add one (element d).
+$service = (string)($_POST['service'] ?? $_GET['service'] ?? Schedule::MAIN);
+if ($service !== Schedule::MAIN && $service !== 'new' && !isset($context->inForce[$service])) {
+    $service = Schedule::MAIN;
+}
+$isMain = $service === Schedule::MAIN;
+$schedule = $isMain ? $main : ($context->inForce[$service]['schedule'] ?? null);
+$categories = $context->schedules->visitCategories();
+// Categories another service schedule already covers: each visit category belongs to one schedule at most.
+$claimed = [];
+foreach ($context->inForce as $key => $entry) {
+    if ($key !== $service) {
+        foreach ($entry['schedule']->categories as $c) {
+            $claimed[$c] = $entry['schedule']->name;
+        }
+    }
+}
 $saved = false;
 $findings = [];
 
@@ -45,6 +62,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $classes[] = $row;
         }
     }
+    $name = trim((string)($_POST['name'] ?? ''));
+    $key = $isMain ? Schedule::MAIN : ($service === 'new' ? Schedule::serviceKey($name) : $service);
+    while ($service === 'new' && isset($context->inForce[$key])) {
+        $key .= '-2';
+    }
     $schedule = Schedule::fromArray([
         'region' => $_POST['region'] ?? '',
         'year' => $_POST['year'] ?? '',
@@ -55,17 +77,45 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         'reasons' => is_array($_POST['reasons'] ?? null) ? $_POST['reasons'] : [],
         'otherFundingAbove200' => !empty($_POST['otherFundingAbove200']),
         'approvedOn' => $_POST['approvedOn'] ?? '',
+        'service' => $key,
+        'name' => $isMain ? '' : $name,
+        'categories' => is_array($_POST['categories'] ?? null) ? $_POST['categories'] : [],
     ]);
-    $findings = ScheduleCheck::run($schedule, $context->guidelines, $context->schedules->fees(), $today);
+    $problems = [];
+    if (!$isMain) {
+        if ($main === null) {
+            $problems[] = xl('Set up the main schedule first: a service schedule takes its guidelines and re-assessment period from it.');
+        } else {
+            $schedule = $schedule->withProgram($main);
+        }
+        if ($name === '') {
+            $problems[] = xl('Give the schedule a name, such as Dental.');
+        }
+        if ($schedule->categories === []) {
+            $problems[] = xl('Choose the visit categories this schedule covers.');
+        }
+        foreach ($schedule->categories as $c) {
+            if (isset($claimed[$c])) {
+                $problems[] = sprintf(xl('%1$s is already covered by the %2$s schedule.'), $categories[$c] ?? (string)$c, $claimed[$c]);
+            }
+        }
+    }
+    $findings = array_map(static fn(string $m): array => ['level' => ScheduleCheck::ERROR, 'message' => $m], $problems);
+    $findings = [...$findings, ...ScheduleCheck::run($schedule, $context->guidelines, $context->schedules->fees(), $today)];
     if (!in_array(ScheduleCheck::ERROR, array_column($findings, 'level'), true)) {
         $context->schedules->save($schedule, (int)$session->get('authUserID'));
         $saved = true;
+        $service = $key;
+        $isMain = $key === Schedule::MAIN;
     }
 } elseif ($schedule !== null) {
     $findings = ScheduleCheck::run($schedule, $context->guidelines, $context->schedules->fees(), $today);
 }
 
-$form = $schedule ?? new Schedule('contiguous', (int)($context->guidelines->latestYear('contiguous') ?? (int)$today->format('Y')), Schedule::FULL, 0, [
+$form = $schedule ?? ($service === 'new' && $main !== null
+    // A new service schedule starts from the main one's classes, for the clinic to change.
+    ? new Schedule($main->region, $main->year, $main->atOrBelow100, $main->nominal, $main->classes, $main->reassessMonths, $main->reasons, $main->otherFundingAbove200)
+    : null) ?? new Schedule('contiguous', (int)($context->guidelines->latestYear('contiguous') ?? (int)$today->format('Y')), Schedule::FULL, 0, [
     ['label' => 'A', 'upTo' => 125, 'method' => Schedule::PERCENT, 'value' => 0],
     ['label' => 'B', 'upTo' => 150, 'method' => Schedule::PERCENT, 'value' => 0],
     ['label' => 'C', 'upTo' => 175, 'method' => Schedule::PERCENT, 'value' => 0],
@@ -96,12 +146,29 @@ $number = static fn(mixed $v): string => is_float($v) || is_int($v) ? rtrim(rtri
 </head>
 <body class="body_top">
 <div class="container-fluid py-3">
-    <h1 class="h4"><?php echo xlt('Sliding fee schedule'); ?></h1>
+    <h1 class="h4"><?php echo xlt('Sliding fee schedule'); ?><?php if (!$isMain) { ?>: <?php echo $service === 'new' ? xlt('new service schedule') : text($form->name); ?><?php } ?></h1>
+    <?php if ($main !== null) { ?>
+    <ul class="nav nav-tabs mb-3" id="schedules">
+        <li class="nav-item"><a class="nav-link <?php echo $isMain ? 'active' : ''; ?>" href="<?php echo attr(Context::url('schedule.php')); ?>"><?php echo xlt('Main schedule'); ?></a></li>
+        <?php foreach ($context->inForce as $key => $entry) {
+            if ($key === Schedule::MAIN) {
+                continue;
+            } ?>
+            <li class="nav-item"><a class="nav-link <?php echo $service === $key ? 'active' : ''; ?>" href="<?php echo attr(Context::url('schedule.php', ['service' => $key])); ?>"><?php echo text($entry['schedule']->name); ?></a></li>
+        <?php } ?>
+        <li class="nav-item"><a class="nav-link <?php echo $service === 'new' ? 'active' : ''; ?>" href="<?php echo attr(Context::url('schedule.php', ['service' => 'new'])); ?>"><?php echo xlt('Add a schedule for a service'); ?></a></li>
+    </ul>
+    <?php } ?>
+    <?php if (!$isMain) { ?>
+    <p class="small"><?php echo xlt('HRSA allows more than one schedule only by service or delivery method, such as medical and dental (Compliance Manual Chapter 9, element d), not by site or population. This schedule covers the visit categories chosen below; every other visit uses the main schedule.'); ?></p>
+    <?php } ?>
     <p class="small text-muted"><?php echo xlt('Checked against the HRSA Health Center Program Compliance Manual, Chapter 9, when it is saved. A schedule with errors is not saved. Insurers are still billed the full fee; the discount is an adjustment to what the patient owes.'); ?>
         <a href="<?php echo attr(Context::url('index.php')); ?>"><?php echo xlt('Back'); ?></a></p>
 
     <?php if ($saved) { ?>
         <div class="alert alert-success"><?php echo xlt('Saved. This schedule is now in force.'); ?></div>
+    <?php } elseif (!$isMain && $main === null) { ?>
+        <div class="alert alert-warning"><?php echo xlt('Set up the main schedule first: a service schedule takes its guidelines and re-assessment period from it.'); ?></div>
     <?php } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') { ?>
         <div class="alert alert-danger"><?php echo xlt('Not saved: the schedule has errors.'); ?></div>
     <?php } elseif ($context->savedAt !== null) { ?>
@@ -113,7 +180,28 @@ $number = static fn(mixed $v): string => is_float($v) || is_int($v) ? rtrim(rtri
 
     <form method="post">
         <input type="hidden" name="csrf_token_form" value="<?php echo attr(CsrfUtils::collectCsrfToken(session: $session)); ?>">
-        <div class="form-row">
+        <input type="hidden" name="service" value="<?php echo attr($service); ?>">
+        <?php if (!$isMain) { ?>
+        <div class="form-group">
+            <label for="name"><?php echo xlt('Name of the service'); ?></label>
+            <input class="form-control form-control-sm w-auto" id="name" name="name" maxlength="40" value="<?php echo attr($form->name); ?>">
+        </div>
+        <fieldset class="form-group">
+            <legend class="h6"><?php echo xlt('Visit categories this schedule covers'); ?></legend>
+            <?php foreach ($categories as $id => $label) { ?>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" name="categories[]" id="cat-<?php echo attr((string)$id); ?>" value="<?php echo attr((string)$id); ?>" <?php echo in_array($id, $form->categories, true) ? 'checked' : ''; ?> <?php echo isset($claimed[$id]) ? 'disabled' : ''; ?>>
+                    <label class="form-check-label" for="cat-<?php echo attr((string)$id); ?>"><?php echo text($label); ?><?php if (isset($claimed[$id])) { ?> <span class="text-muted">(<?php echo text($claimed[$id]); ?>)</span><?php } ?></label>
+                </div>
+            <?php } ?>
+        </fieldset>
+        <div class="form-group">
+            <label for="approvedOn"><?php echo xlt('Board approved on'); ?></label>
+            <input type="date" class="form-control form-control-sm w-auto" id="approvedOn" name="approvedOn" value="<?php echo attr($form->approvedOn ?? ''); ?>">
+        </div>
+        <p class="small text-muted"><?php echo text(sprintf(xl('From the main schedule: guidelines %1$s (%2$s); re-assess every %3$s months.'), (string)($main?->year ?? ''), (string)($main?->region ?? ''), (string)($main?->reassessMonths ?? ''))); ?></p>
+        <?php } ?>
+        <div class="form-row" <?php echo $isMain ? '' : 'hidden'; ?>>
             <div class="form-group col-md-4">
                 <label for="region"><?php echo xlt('Poverty guidelines for'); ?></label>
                 <select class="form-control form-control-sm" id="region" name="region">
@@ -130,10 +218,12 @@ $number = static fn(mixed $v): string => is_float($v) || is_int($v) ? rtrim(rtri
                     <?php } ?>
                 </select>
             </div>
+            <?php if ($isMain) { ?>
             <div class="form-group col-md-3">
                 <label for="approvedOn"><?php echo xlt('Board approved on'); ?></label>
                 <input type="date" class="form-control form-control-sm" id="approvedOn" name="approvedOn" value="<?php echo attr($form->approvedOn ?? ''); ?>">
             </div>
+            <?php } ?>
             <div class="form-group col-md-3">
                 <label for="reassessMonths"><?php echo xlt('Re-assess every (months)'); ?></label>
                 <input type="number" min="1" max="60" class="form-control form-control-sm" id="reassessMonths" name="reassessMonths" value="<?php echo attr((string)$form->reassessMonths); ?>">

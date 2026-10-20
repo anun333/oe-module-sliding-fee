@@ -1,7 +1,7 @@
 <?php
 
 /**
- * The sliding fee schedule: each saved version is kept, and the newest is in force.
+ * The sliding fee schedules: each saved version is kept, and the newest of each service is in force.
  *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
@@ -19,16 +19,51 @@ use OpenHealthcare\SlidingFee\Domain\Schedule;
 
 final class ScheduleRepository
 {
-    /** @return array{id: int, schedule: Schedule, savedAt: string}|null */
+    /** The main schedule in force. @return array{id: int, schedule: Schedule, savedAt: string}|null */
     public function current(): ?array
     {
-        $rows = QueryUtils::fetchRecords('SELECT `id`, `schedule_json`, `saved_at` FROM `sliding_fee_schedule` ORDER BY `id` DESC LIMIT 1');
-        $row = $rows[0] ?? null;
-        if ($row === null) {
-            return null;
+        return $this->all()[Schedule::MAIN] ?? null;
+    }
+
+    /**
+     * Every schedule in force: the newest saved version of each, the main one first. A service
+     * schedule takes the program's guidelines and re-assessment period from the main one.
+     *
+     * @return array<string, array{id: int, schedule: Schedule, savedAt: string}> by service key
+     */
+    public function all(): array
+    {
+        $found = [];
+        foreach (QueryUtils::fetchRecords('SELECT `id`, `schedule_json`, `saved_at` FROM `sliding_fee_schedule` ORDER BY `id` DESC') as $row) {
+            $data = json_decode((string)$row['schedule_json'], true);
+            $schedule = Schedule::fromArray(is_array($data) ? $data : []);
+            $found[$schedule->service] ??= ['id' => (int)$row['id'], 'schedule' => $schedule, 'savedAt' => (string)$row['saved_at']];
         }
-        $data = json_decode((string)$row['schedule_json'], true);
-        return ['id' => (int)$row['id'], 'schedule' => Schedule::fromArray(is_array($data) ? $data : []), 'savedAt' => (string)$row['saved_at']];
+        $main = $found[Schedule::MAIN] ?? null;
+        if ($main === null) {
+            return [];
+        }
+        $out = [Schedule::MAIN => $main];
+        foreach ($found as $service => $entry) {
+            if ($service !== Schedule::MAIN && $entry['schedule']->categories !== []) {
+                $out[$service] = ['schedule' => $entry['schedule']->withProgram($main['schedule'])] + $entry;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * The visit categories a service schedule can cover: the calendar's patient appointment categories.
+     *
+     * @return array<int, string> pc_catid => name
+     */
+    public function visitCategories(): array
+    {
+        $out = [];
+        foreach (QueryUtils::fetchRecords('SELECT `pc_catid`, `pc_catname` FROM `openemr_postcalendar_categories` WHERE `pc_cattype` = 0 ORDER BY `pc_catname`') as $r) {
+            $out[(int)$r['pc_catid']] = (string)$r['pc_catname'];
+        }
+        return $out;
     }
 
     public function save(Schedule $schedule, int $userId): int

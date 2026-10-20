@@ -53,6 +53,12 @@ $pid = (int)($session->get('pid') ?? 0);
             <?php foreach ($schedule->classes as $c) { ?><li><?php echo text(Labels::payClass($c['label'], $schedule)); ?></li><?php } ?>
             <li><?php echo text(Labels::payClass(Schedule::NO_DISCOUNT, $schedule)); ?></li>
         </ul>
+        <?php foreach ($context->inForce as $key => $entry) {
+            if ($entry['schedule']->isMain()) {
+                continue;
+            } ?>
+            <p class="small"><?php echo text(sprintf(xl('%1$s schedule, for its own visit categories: %2$s.'), $entry['schedule']->name, implode(', ', array_map(static fn(array $c): string => $c['label'], $entry['schedule']->classes)))); ?></p>
+        <?php } ?>
         <p class="small"><?php echo text(sprintf(xl('Guidelines %1$s (%2$s); re-assess every %3$s months; in force since %4$s.'), $schedule->year, $schedule->region, $schedule->reassessMonths, oeFormatShortDate(substr((string)$context->savedAt, 0, 10)))); ?></p>
         <?php foreach ($findings as $f) { ?>
             <div class="alert <?php echo $f['level'] === ScheduleCheck::ERROR ? 'alert-danger' : 'alert-warning'; ?> py-2 small"><?php echo text($f['message']); ?></div>
@@ -66,6 +72,9 @@ $pid = (int)($session->get('pid') ?? 0);
         <?php } ?>
         <?php if (AclMain::aclCheckCore('acct', 'rep_a')) { ?>
             <a class="btn btn-sm btn-outline-primary mr-2" href="<?php echo attr(Context::url('evaluation.php')); ?>"><?php echo xlt('Evaluation'); ?></a>
+        <?php } ?>
+        <?php if ($schedule !== null && AclMain::aclCheckCore('patients', 'demo')) { ?>
+            <a class="btn btn-sm btn-outline-primary mr-2" href="<?php echo attr(Context::url('due.php')); ?>"><?php echo xlt('Re-assessments due'); ?></a>
         <?php } ?>
         <?php if ($pid > 0 && AclMain::aclCheckCore('patients', 'demo', '', 'write')) { ?>
             <a class="btn btn-sm btn-outline-primary" href="<?php echo attr(Context::url('patient.php', ['pid' => $pid])); ?>"><?php echo xlt('Current patient'); ?></a>

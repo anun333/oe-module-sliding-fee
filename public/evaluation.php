@@ -21,6 +21,7 @@ use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Core\Header;
 use OpenHealthcare\SlidingFee\Context;
 use OpenHealthcare\SlidingFee\Domain\Evaluation;
+use OpenHealthcare\SlidingFee\Domain\Schedule;
 use OpenHealthcare\SlidingFee\Labels;
 use OpenHealthcare\SlidingFee\Repository\AssessmentRepository;
 use OpenHealthcare\SlidingFee\Repository\EvaluationRepository;
@@ -30,7 +31,10 @@ if (!AclMain::aclCheckCore('acct', 'rep_a')) {
     AccessDeniedHelper::denyWithTemplate('ACL check failed for acct/rep_a: Sliding Fee Discount evaluation', xl('Sliding Fee Discount'));
 }
 $context = Context::load();
-$schedule = $context->schedule;
+// One report per schedule: a service schedule's visits are those of its categories, the main schedule's all others.
+$service = (string)($_GET['service'] ?? Schedule::MAIN);
+$schedule = $context->inForce[$service]['schedule'] ?? $context->schedule;
+$service = $schedule?->service ?? Schedule::MAIN;
 $today = new DateTimeImmutable('today');
 $from = DateTimeImmutable::createFromFormat('!Y-m-d', (string)($_GET['from'] ?? '')) ?: $today->modify('first day of january this year');
 $to = DateTimeImmutable::createFromFormat('!Y-m-d', (string)($_GET['to'] ?? '')) ?: $today;
@@ -41,7 +45,10 @@ $rows = [];
 $recorded = ['assessments' => 0, 'declined' => 0, 'patients' => 0];
 if ($schedule !== null) {
     $repo = new EvaluationRepository();
-    $visits = $repo->visits($from, $to, $schedule->reasons);
+    $visits = array_values(array_filter(
+        $repo->visits($from, $to, $schedule->reasons),
+        static fn(array $v): bool => $context->scheduleFor($v['category'])?->service === $service,
+    ));
     $pids = array_values(array_unique(array_map(static fn(array $v): int => $v['pid'], $visits)));
     $rows = Evaluation::byClass($schedule, $context->guidelines, $visits, (new AssessmentRepository())->forPatients($pids));
     $recorded = $repo->assessmentsRecorded($from, $to);
@@ -49,13 +56,13 @@ if ($schedule !== null) {
 
 if (($_GET['format'] ?? '') === 'csv' && $schedule !== null) {
     header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="sliding-fee-evaluation-' . $from->format('Y-m-d') . '-to-' . $to->format('Y-m-d') . '.csv"');
+    header('Content-Disposition: attachment; filename="sliding-fee-evaluation-' . ($schedule->isMain() ? '' : $schedule->service . '-') . $from->format('Y-m-d') . '-to-' . $to->format('Y-m-d') . '.csv"');
     header('Cache-Control: no-store');
     $out = fopen('php://output', 'w');
     if ($out === false) {
         exit;
     }
-    fputcsv($out, ['Sliding fee discount program evaluation', $from->format('Y-m-d') . ' to ' . $to->format('Y-m-d'), 'guidelines ' . $schedule->year . ' ' . $schedule->region], ',', '"', '');
+    fputcsv($out, ['Sliding fee discount program evaluation', $from->format('Y-m-d') . ' to ' . $to->format('Y-m-d'), 'guidelines ' . $schedule->year . ' ' . $schedule->region, $schedule->isMain() ? 'main schedule' : $schedule->name . ' schedule'], ',', '"', '');
     fputcsv($out, ['Pay class', 'Patients', 'Visits', 'Charges at full fee', 'Sliding fee discounts posted'], ',', '"', '');
     foreach ($rows as $class => $r) {
         fputcsv($out, [Labels::payClass($class, $schedule), $r['patients'], $r['visits'], number_format($r['fees'], 2, '.', ''), number_format($r['sliding'], 2, '.', '')], ',', '"', '');
@@ -78,13 +85,21 @@ if (($_GET['format'] ?? '') === 'csv' && $schedule !== null) {
     <?php if ($schedule === null) { ?>
         <div class="alert alert-warning"><?php echo xlt('The clinic has not set up its sliding fee schedule yet.'); ?></div>
     <?php } else { ?>
+        <?php if (count($context->inForce) > 1) { ?>
+        <ul class="nav nav-tabs mb-3" id="schedules">
+            <?php foreach ($context->inForce as $key => $entry) { ?>
+                <li class="nav-item"><a class="nav-link <?php echo $key === $service ? 'active' : ''; ?>" href="<?php echo attr(Context::url('evaluation.php', ['service' => $key, 'from' => $from->format('Y-m-d'), 'to' => $to->format('Y-m-d')])); ?>"><?php echo $key === Schedule::MAIN ? xlt('Main schedule') : text($entry['schedule']->name); ?></a></li>
+            <?php } ?>
+        </ul>
+        <?php } ?>
         <form method="get" class="form-inline mb-3">
+            <input type="hidden" name="service" value="<?php echo attr($service); ?>">
             <label class="mr-2" for="from"><?php echo xlt('From'); ?></label>
             <input type="date" class="form-control form-control-sm mr-2" id="from" name="from" value="<?php echo attr($from->format('Y-m-d')); ?>">
             <label class="mr-2" for="to"><?php echo xlt('To'); ?></label>
             <input type="date" class="form-control form-control-sm mr-2" id="to" name="to" value="<?php echo attr($to->format('Y-m-d')); ?>">
             <button class="btn btn-sm btn-primary mr-2" type="submit"><?php echo xlt('Show'); ?></button>
-            <a class="btn btn-sm btn-outline-secondary" href="<?php echo attr(Context::url('evaluation.php', ['from' => $from->format('Y-m-d'), 'to' => $to->format('Y-m-d'), 'format' => 'csv'])); ?>"><?php echo xlt('Download CSV'); ?></a>
+            <a class="btn btn-sm btn-outline-secondary" href="<?php echo attr(Context::url('evaluation.php', ['service' => $service, 'from' => $from->format('Y-m-d'), 'to' => $to->format('Y-m-d'), 'format' => 'csv'])); ?>"><?php echo xlt('Download CSV'); ?></a>
         </form>
         <table class="table table-sm w-auto">
             <thead><tr><th><?php echo xlt('Pay class'); ?></th><th class="text-right"><?php echo xlt('Patients'); ?></th><th class="text-right"><?php echo xlt('Visits'); ?></th>

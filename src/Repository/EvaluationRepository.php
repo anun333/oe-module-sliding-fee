@@ -23,12 +23,12 @@ final class EvaluationRepository
 {
     /**
      * @param list<string> $reasons Adjustment Reasons posted as sliding fee discounts
-     * @return list<array{pid: int, encounter: int, date: \DateTimeImmutable, fees: float, sliding: float}>
+     * @return list<array{pid: int, encounter: int, date: \DateTimeImmutable, category: int, fees: float, sliding: float}>
      */
     public function visits(\DateTimeImmutable $from, \DateTimeImmutable $to, array $reasons): array
     {
         $reasonIn = $reasons === [] ? "''" : implode(', ', array_fill(0, count($reasons), '?'));
-        $sql = "SELECT fe.`pid`, fe.`encounter`, fe.`date`,
+        $sql = "SELECT fe.`pid`, fe.`encounter`, fe.`date`, COALESCE(fe.`pc_catid`, 0) AS category,
                 (SELECT COALESCE(SUM(b.`fee`), 0) FROM `billing` AS b
                   WHERE b.`pid` = fe.`pid` AND b.`encounter` = fe.`encounter` AND b.`activity` = 1
                     AND b.`code_type` NOT IN ('COPAY', 'TAX')) AS fees,
@@ -43,6 +43,7 @@ final class EvaluationRepository
             'pid' => (int)$r['pid'],
             'encounter' => (int)$r['encounter'],
             'date' => new \DateTimeImmutable(substr((string)$r['date'], 0, 10)),
+            'category' => (int)$r['category'],
             'fees' => (float)$r['fees'],
             'sliding' => (float)$r['sliding'],
         ], $rows);

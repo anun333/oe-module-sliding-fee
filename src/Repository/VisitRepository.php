@@ -22,13 +22,13 @@ final class VisitRepository
 {
     /**
      * @param list<string> $reasons Adjustment Reasons posted as sliding fee discounts
-     * @return array{feId: int, date: \DateTimeImmutable, fees: float, insurancePaid: float, insuranceAdjusted: float,
+     * @return array{feId: int, date: \DateTimeImmutable, category: int, fees: float, insurancePaid: float, insuranceAdjusted: float,
      *               patientPaid: float, patientAdjusted: float, slidingAdjusted: float, insured: bool, settled: bool}|null
      */
     public function visit(int $pid, int $encounter, array $reasons): ?array
     {
         $fe = QueryUtils::fetchRecords(
-            'SELECT `id`, `date`, COALESCE(`last_level_closed`, 0) AS closed FROM `form_encounter` WHERE `pid` = ? AND `encounter` = ?',
+            'SELECT `id`, `date`, COALESCE(`pc_catid`, 0) AS category, COALESCE(`last_level_closed`, 0) AS closed FROM `form_encounter` WHERE `pid` = ? AND `encounter` = ?',
             [$pid, $encounter],
         )[0] ?? null;
         if ($fe === null) {
@@ -57,6 +57,7 @@ final class VisitRepository
         return [
             'feId' => (int)$fe['id'],
             'date' => $date,
+            'category' => (int)$fe['category'],
             'fees' => (float)$billing['fees'],
             'insurancePaid' => (float)$posted['ins_paid'],
             'insuranceAdjusted' => (float)$posted['ins_adj'],
@@ -66,6 +67,24 @@ final class VisitRepository
             'insured' => $levels > 0,
             'settled' => $levels === 0 || (int)$fe['closed'] >= $levels,
         ];
+    }
+
+    /**
+     * Each patient's latest visit on or after a day, for the re-assessments due list.
+     *
+     * @return array<int, \DateTimeImmutable> pid => date
+     */
+    public function lastVisitsSince(\DateTimeImmutable $since): array
+    {
+        $out = [];
+        $rows = QueryUtils::fetchRecords(
+            'SELECT `pid`, MAX(`date`) AS last_visit FROM `form_encounter` WHERE `date` >= ? GROUP BY `pid`',
+            [$since->format('Y-m-d')],
+        );
+        foreach ($rows as $r) {
+            $out[(int)$r['pid']] = new \DateTimeImmutable(substr((string)$r['last_visit'], 0, 10));
+        }
+        return $out;
     }
 
     /**
