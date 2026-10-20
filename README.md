@@ -119,6 +119,18 @@ The unit tests need no database or OpenEMR install. CI runs them, and the footpr
 - HRSA, Health Center Program Compliance Manual, [Chapter 9: Sliding Fee Discount Program](https://bphc.hrsa.gov/compliance/compliance-manual/chapter9), with Chapters 16 and 19, the [Site Visit Protocol](https://bphc.hrsa.gov/compliance/site-visits/site-visit-protocol/sliding-fee-discount-program) and the compliance FAQ, read 2026-10-18.
 - HHS poverty guidelines for 2026, 91 FR 1797 (January 15, 2026), in [data/poverty-guidelines.json](data/poverty-guidelines.json). A year and region whose figures aren't filled in are shown as not loaded, never estimated.
 
+## Other modules for OpenEMR
+
+From the same project. Each installs with `composer require anun333/<module>` and is then enabled in Modules › Manage Modules.
+
+| Module | What it does |
+|---|---|
+| [Clinic Forms](https://github.com/anun333/oe-module-clinic-forms) | Printable clinic paperwork: consents, privacy notices, referral letters and validated screening questionnaires, with the clinic's own details, in English and Spanish |
+| [UDS Report](https://github.com/anun333/oe-module-uds-report) | HRSA's Uniform Data System report for health centers: the patient, visit and diagnosis tables, eCQM readiness, a Table 9D worksheet and grant evidence |
+| [Staff Worklist](https://github.com/anun333/oe-module-staff-worklist) | One queue of outstanding staff work: unsigned results, orders with no result, referrals with no reply, screening and claims follow-up |
+| [Care Management](https://github.com/anun333/oe-module-care-management) | CCM, PCM and BHI enrollment with CMS's consent elements, monthly time logging, and the codes each month meets |
+| [Migration](https://github.com/anun333/oe-module-migration) | Records from another EHR, read from the FHIR export certified EHRs offer, checked before import and safe to rerun |
+
 ## License
 
 GPL-3.0-or-later. See [LICENSE](LICENSE).
