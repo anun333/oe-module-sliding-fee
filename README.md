@@ -10,7 +10,7 @@ It covers four things:
 
 It posts nothing to accounts: staff post each discount, with its Adjustment Reason, where they post adjustments now.
 
-> **Status: 0.1.0, a pre-release.** Tested on OpenEMR 8.4.1 with synthetic data only. The schedule, the discount arithmetic and HRSA's rules are as read on 2026-10-18; check them against your board-approved policy before staff rely on them.
+> **Status: 0.2.0, a pre-release.** Tested on OpenEMR 8.4.1 with synthetic data only. The schedule, the discount arithmetic and HRSA's rules are as read on 2026-10-18; check them against your board-approved policy before staff rely on them.
 
 What installing it changes in your database, what it reads and writes, and what it hooks into are listed in [FOOTPRINT.md](FOOTPRINT.md), generated from the source.
 
@@ -35,6 +35,11 @@ What installing it changes in your database, what it reads and writes, and what 
   | A nominal charge below what the first pay class pays. For a percentage class, the fees in your fee schedule for which it wouldn't be are counted | element c |
   | The newest guidelines year loaded | element e |
   | When the board approved it, and whether that was more than three years ago | element l and Chapter 19 |
+- **Schedules by service** (element d: only by service or delivery method, such as medical and dental, never by site or population):
+  - **The main schedule** covers every visit no other schedule claims.
+  - **A service schedule** covers the visit categories you choose. It has its own pay classes, charge at or below 100% (HRSA: one nominal charge per schedule), Adjustment Reasons and approval date.
+  - **Shared settings:** a service schedule takes the guidelines region and year and the re-assessment period from the main one, since a patient's income assessment covers every service.
+  - **Rules:** each visit category belongs to one schedule at most. Each schedule gets the same compliance check.
 - **Assessment** (from the patient's dashboard card):
   - **Recorded:** annual income, family size, the date, and how it was documented (documents seen, self-declared, or declined), with a note.
   - **Shown:** the percentage of the guidelines and the pay class.
@@ -42,13 +47,15 @@ What installing it changes in your database, what it reads and writes, and what 
   - **Demographics:** saving one also updates family size, monthly income and Financial Review Date there, through OpenEMR's own `updatePatientData()`. Everything that reads those fields, such as a UDS Table 4 report, sees the same income.
   - **The policy is yours:** the clinic decides what counts as income and family, what proof to ask for, and how often to re-assess. HRSA leaves all of that to the health center.
 - **Dashboard card:** the patient's pay class, the percentage, how it was documented, and when re-assessment is due.
-- **A visit's discount:** the pay class in force on the date of service, the charges at full fee, what insurance and the patient have paid, the most the patient pays, and the discount to post now.
+- **A visit's discount:** the schedule for the visit's category, the pay class in force on the date of service (the patient's income placed on that schedule's classes), the charges at full fee, what insurance and the patient have paid, the most the patient pays, and the discount to post now.
   - **Uninsured:** the discount is the charges less the class's charge.
   - **Insured:** the class's charge, worked out on the full fee, is the most the patient pays in all, copays and deductibles included (element k). HRSA's own example: an $80 fee, a $60 copay, a class that pays half; the patient pays $40. Until insurance has finished with the visit, the page gives that most-the-patient-pays figure and holds the discount.
   - **Insurers are billed the full fee** (Chapter 16), so the discount is never a lower price on the fee sheet.
-- **Evaluation:** for a period, patients, visits, charges and sliding fee discounts posted, within each pay class and at or below 100%, with a CSV.
+- **Evaluation:** for a period, patients, visits, charges and sliding fee discounts posted, within each pay class and at or below 100%, with a CSV. With more than one schedule, there is a report for each, covering its own visits.
   - **What it's for:** element l asks for this data at least once every three years, with other data such as patient surveys.
   - **How visits are placed:** each visit goes in the pay class of the assessment in force on its date, on the schedule in use. Visits with no assessment, or a declined one, have rows of their own.
+
+- **Re-assessments due:** patients seen in the last 12 months whose assessment runs out within 30 days, has run out, or who were never assessed. Each opens the patient's assessments.
 
 ## Posting the discount
 
@@ -70,16 +77,16 @@ Each page makes the same check as the OpenEMR page it stands beside, and nothing
 | Assessments (writes Demographics) | `patients/demo` write | the Demographics editor |
 | A visit's discount | `acct/bill` write | checkout |
 | Evaluation (reads payments) | `acct/rep_a` | the Collections report |
+| Re-assessments due | `patients/demo` | reading Demographics |
 | Dashboard card | `patients/demo` | the dashboard's other cards |
 
-Viewing a patient's assessments or a visit's discount, and recording an assessment, are written to OpenEMR's audit log.
+Viewing a patient's assessments, a visit's discount or the re-assessments due list, and recording an assessment, are written to OpenEMR's audit log.
 
 ## Not done yet
 
 - **Posting the discount itself.** It writes to accounts receivable, so it waits until the calculator has been checked against real visits.
-- **Separate schedules by service** (for example medical and dental, element d). The schedule table can hold them; the pages show one.
 - **Discounts above 200%** funded from other sources, beyond the flag on the schedule.
-- **A list of patients due for re-assessment,** for example as a Staff Worklist tab.
+- **Re-assessments due as a Staff Worklist tab.** The list is on this module's own page for now.
 
 ## Install
 

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.0 (2026-10-19)
+
+- **Schedules by service.** A clinic can add a schedule for a service or delivery method, such as dental, beside its main one (Chapter 9, element d). It covers the visit categories it names. It has its own pay classes, nominal charge, Adjustment Reasons and approval date, and the same compliance check.
+  - Each visit category belongs to one schedule at most. A schedule claiming one another already covers is refused.
+  - A service schedule takes the guidelines and re-assessment period from the main schedule: a patient's income assessment covers every service.
+  - **A visit's discount** uses the schedule for its category, placing the patient's income on that schedule's classes. The page names the schedule when there is more than one.
+  - **The evaluation report** has one report per schedule, each with its own visits, and a CSV for each.
+- **Re-assessments due:** a new page listing patients seen in the last 12 months whose assessment runs out within 30 days, has run out, or who were never assessed. It needs `patients/demo` (reading Demographics), and viewing it is written to the audit log.
+- **Still for staff to post:** posting the discount through OpenEMR's accounts needs a posting service in OpenEMR itself, so staff still post what the visit page shows.
+- **Tested** with unit tests for choosing a visit's schedule, placing an assessment on a service schedule's classes, and the due list. The end-to-end check on OpenEMR 8.4.1 now:
+  - refuses a schedule with no categories, and one claiming a category already covered;
+  - shows a visit moved to the Dental category using the Dental schedule ($20 at most, so $5 more after the $75 already posted);
+  - counts that visit only in Dental's evaluation;
+  - lists a patient never assessed, then the same patient as running out soon after an older assessment.
+
 ## 0.1.0 (2026-10-18)
 
 First release, as a standalone Composer package.
