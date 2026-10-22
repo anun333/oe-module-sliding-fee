@@ -116,6 +116,10 @@ $monthly = is_numeric($patient['monthly_income'] ?? null) ? (float)$patient['mon
         <h2 class="h5 mt-4"><?php echo xlt('Record an assessment'); ?></h2>
         <p class="small text-muted"><?php echo xlt('Income and family size only, whatever the insurance (HRSA Chapter 9). The clinic policy decides what counts as income and family, and what proof to ask for.'); ?>
             <?php echo xlt('Guidelines'); ?>: <?php echo text((string)$schedule->year); ?>, <?php echo text($context->guidelines->source($schedule->year, $schedule->region) ?? ''); ?>.</p>
+        <?php if (QueryUtils::fetchRecords("SELECT 1 FROM `modules` WHERE `mod_directory` = 'oe-module-clinic-forms' AND `mod_active` = 1 LIMIT 1") !== []) { ?>
+            <?php // Clinic Forms' application, ticked and filled for the patient whose chart is open; staff print it there. ?>
+            <p class="small"><a href="<?php echo attr(\OpenEMR\Core\OEGlobalsBag::getInstance()->getWebRoot() . '/interface/modules/custom_modules/oe-module-clinic-forms/public/index.php?select=doc:sliding-fee-application,doc:sliding-fee-notice&fill=1'); ?>"><?php echo xlt('Print the application and the notice (Clinic Forms)'); ?></a></p>
+        <?php } ?>
         <form method="post" class="form-row align-items-end">
             <input type="hidden" name="csrf_token_form" value="<?php echo attr(CsrfUtils::collectCsrfToken(session: $session)); ?>">
             <div class="form-group col-md-2">

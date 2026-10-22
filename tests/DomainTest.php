@@ -6,6 +6,7 @@ namespace OpenHealthcare\SlidingFee\Tests;
 
 use OpenHealthcare\SlidingFee\Domain\Assessment;
 use OpenHealthcare\SlidingFee\Domain\Evaluation;
+use OpenHealthcare\SlidingFee\Domain\NoticeTable;
 use OpenHealthcare\SlidingFee\Domain\PovertyGuidelines;
 use OpenHealthcare\SlidingFee\Domain\Reassessment;
 use OpenHealthcare\SlidingFee\Domain\Schedule;
@@ -209,6 +210,32 @@ final class DomainTest extends TestCase
         $this->assertSame(1, $rows[VisitDiscount::DECLINED]['visits']);
         $this->assertSame(['patients' => 2, 'visits' => 2, 'fees' => 160.0, 'sliding' => 0.0], $rows[VisitDiscount::NONE], 'an expired assessment and none at all');
         $this->assertSame(0, $rows['A']['visits']);
+    }
+
+    public function testTheNoticeTableGivesEachHouseholdSizeItsFullAndPartialDiscountLimits(): void
+    {
+        // 2026, 48 contiguous states: $15,960 for one person and $5,680 for each more; the top class ends at 200%.
+        $rows = NoticeTable::rows(self::schedule(), self::guidelines());
+        $this->assertNotNull($rows);
+        $this->assertCount(8, $rows);
+        $this->assertSame(['1', '$15,960', '$31,920'], $rows[0]);
+        $this->assertSame(['4', '$33,000', '$66,000'], $rows[3]);
+        $this->assertSame(['8', '$55,720', '$111,440'], $rows[7]);
+    }
+
+    public function testThePartialLimitIsTheHighestClassAndRoundsDown(): void
+    {
+        $rows = NoticeTable::rows(self::schedule(classes: [self::c('A', 133.3, 'percent', 50), self::c('B', 187.5, 'percent', 25)]), self::guidelines());
+        $this->assertSame('$29,925', $rows[0][2] ?? null, '187.5% of $15,960 is $29,925.00');
+        $this->assertSame('$40,575', $rows[1][2] ?? null, '187.5% of $21,640 is $40,575.00');
+    }
+
+    public function testWithoutItsGuidelinesOrAnyClassTheNoticeStaysBlank(): void
+    {
+        $this->assertNull(NoticeTable::rows(self::schedule(year: 2019), self::guidelines()), 'no 2019 guidelines on file');
+        $this->assertNull(NoticeTable::rows(self::schedule(classes: []), self::guidelines()), 'no pay classes, so no partial discount to state');
+        $this->assertStringContainsString('2026', NoticeTable::note(self::schedule(), 'en'));
+        $this->assertStringStartsWith('Según', NoticeTable::note(self::schedule(), 'es'));
     }
 
     private static function guidelines(): PovertyGuidelines

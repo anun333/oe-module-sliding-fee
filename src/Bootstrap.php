@@ -19,6 +19,7 @@ use OpenEMR\Events\Core\TwigEnvironmentEvent;
 use OpenEMR\Events\Patient\Summary\Card\SectionEvent;
 use OpenEMR\Menu\MenuEvent;
 use OpenHealthcare\SlidingFee\Card\SlidingFeeCard;
+use OpenHealthcare\SlidingFee\Domain\NoticeTable;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Twig\Loader\FilesystemLoader;
 
@@ -36,6 +37,26 @@ class Bootstrap
         $this->eventDispatcher->addListener(MenuEvent::MENU_UPDATE, $this->addMenuItem(...));
         $this->eventDispatcher->addListener(TwigEnvironmentEvent::EVENT_CREATED, $this->addTemplates(...));
         $this->eventDispatcher->addListener(SectionEvent::EVENT_HANDLE, $this->addCard(...));
+        // Clinic Forms asks before printing a document; its name, so this module needn't load that one's classes.
+        $this->eventDispatcher->addListener('clinic_forms.document.fill', $this->fillNotice(...));
+    }
+
+    /**
+     * Fills Clinic Forms' sliding fee notice with the discounts of the schedule in force. Without a
+     * schedule, or its guidelines, the notice's table stays blank for the clinic to fill in.
+     */
+    public function fillNotice(object $event): void
+    {
+        if (!method_exists($event, 'fillTable') || ($event->documentId ?? null) !== NoticeTable::DOCUMENT
+            || !in_array(NoticeTable::TABLE, (array)($event->tableIds ?? []), true)) {
+            return;
+        }
+        $context = Context::load();
+        $schedule = $context->schedule;
+        $rows = $schedule === null ? null : NoticeTable::rows($schedule, $context->guidelines);
+        if ($schedule !== null && $rows !== null) {
+            $event->fillTable(NoticeTable::TABLE, $rows, NoticeTable::note($schedule, (string)($event->language ?? 'en')));
+        }
     }
 
     public function addMenuItem(MenuEvent $event): MenuEvent

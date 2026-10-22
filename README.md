@@ -56,6 +56,7 @@ What installing it changes in your database, what it reads and writes, and what 
   - **How visits are placed:** each visit goes in the pay class of the assessment in force on its date, on the schedule in use. Visits with no assessment, or a declined one, have rows of their own.
 
 - **Re-assessments due:** patients seen in the last 12 months whose assessment runs out within 30 days, has run out, or who were never assessed. Each opens the patient's assessments.
+- **With Clinic Forms (0.3.0):** Clinic Forms' sliding fee notice prints the discounts of the schedule in force. For household sizes 1 to 8, it gives the income up to which the full discount applies (100% of the guideline) and up to which a partial one does (the highest pay class), in English or Spanish, saying which year's guidelines. The patient page links to Clinic Forms with the application and the notice ticked and the patient filled in. Without Clinic Forms, nothing changes here.
 
 ## Posting the discount
 

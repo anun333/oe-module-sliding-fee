@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 (unreleased)
+
+- **Clinic Forms' sliding fee notice, filled with the schedule in force.** With Clinic Forms installed (0.33.0 or later), its notice's discounts table prints, for household sizes 1 to 8, the yearly income up to which the full discount applies (100% of the poverty guideline) and up to which a partial discount applies (the highest pay class, rounded down). A note says it's from the schedule in force and which year's guidelines. English and Spanish, printed or downloaded.
+  - It answers Clinic Forms' `clinic_forms.document.fill` event and needs none of Clinic Forms' classes.
+  - Without a schedule, or its year's guidelines, the table prints blank for the clinic to fill in.
+- **The patient page links to Clinic Forms** with the application and the notice ticked and the patient filled in, for staff to print.
+- Checked on OpenEMR 8.4.1 in the end-to-end check (36 checks): the 2026 figures for 1, 4 and 8 people in English, the Spanish note, the Word download, and the link.
+
 ## 0.2.0 (2026-10-19)
 
 - **Schedules by service.** A clinic can add a schedule for a service or delivery method, such as dental, beside its main one (Chapter 9, element d). It covers the visit categories it names. It has its own pay classes, nominal charge, Adjustment Reasons and approval date, and the same compliance check.
