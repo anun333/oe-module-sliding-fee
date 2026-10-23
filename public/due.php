@@ -65,7 +65,8 @@ $status = [
 $canAssess = AclMain::aclCheckCore('patients', 'demo', '', 'write');
 ?>
 <!DOCTYPE html>
-<html>
+<?php // The module's own text is written in English. ?>
+<html lang="en">
 <head>
     <title><?php echo xlt('Sliding fee re-assessments due'); ?></title>
     <?php Header::setupHeader(); ?>

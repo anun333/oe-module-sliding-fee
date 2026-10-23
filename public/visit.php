@@ -59,7 +59,8 @@ $reason = $schedule->reasons[0] ?? '';
 $discountReasonAtCheckout = is_file(OEGlobalsBag::getInstance()->getProjectDir() . '/src/Billing/CheckoutDiscountReason.php');
 ?>
 <!DOCTYPE html>
-<html>
+<?php // The module's own text is written in English. ?>
+<html lang="en">
 <head>
     <title><?php echo xlt('Sliding Fee Discount'); ?></title>
     <?php Header::setupHeader(); ?>

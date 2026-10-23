@@ -140,10 +140,12 @@ $reasons = $context->schedules->adjustmentReasons();
 $number = static fn(mixed $v): string => is_float($v) || is_int($v) ? rtrim(rtrim(number_format((float)$v, 2, '.', ''), '0'), '.') : (string)$v;
 ?>
 <!DOCTYPE html>
-<html>
+<?php // The module's own text is written in English. ?>
+<html lang="en">
 <head>
     <title><?php echo xlt('Sliding fee schedule'); ?></title>
     <?php Header::setupHeader(); ?>
+    <style>/* Links in running text are underlined, not told apart by colour alone (WCAG 1.4.1). */ p a, li a { text-decoration: underline; }</style>
 </head>
 <body class="body_top">
 <div class="container-fluid py-3">

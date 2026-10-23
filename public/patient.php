@@ -91,7 +91,8 @@ $visits = $canBill ? (new VisitRepository())->recent($pid) : [];
 $monthly = is_numeric($patient['monthly_income'] ?? null) ? (float)$patient['monthly_income'] : null;
 ?>
 <!DOCTYPE html>
-<html>
+<?php // The module's own text is written in English. ?>
+<html lang="en">
 <head>
     <title><?php echo xlt('Sliding Fee Discount'); ?></title>
     <?php Header::setupHeader(); ?>

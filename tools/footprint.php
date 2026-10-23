@@ -479,7 +479,7 @@ foreach ($it as $f) {
     // Documentation and licence text change nothing a reviewer must check, and
     // counting them would make every doc edit fail --check.
     if (preg_match('#^(\.git|\.github|vendor|\.phpunit\.cache)/#', $rel) || str_ends_with($rel, '.md')
-        || in_array($rel, ['composer.lock', 'LICENSE', '.gitignore'], true)) {
+        || in_array($rel, ['composer.lock', 'LICENSE', '.gitignore', '.phpunit.result.cache'], true)) {
         continue;
     }
     $kind = match (true) {
@@ -558,10 +558,21 @@ $md[] = '';
 // Core functions known to write, so the summary line can't understate writes.
 $writerFunctions = ['setUserSetting' => 'user_settings', 'sqlInsert' => 'a core table', 'sqlStatement' => 'a core table'];
 $viaFunctions = array_intersect_key($writerFunctions, $coreFunctions);
+// Core methods known to write, found by name in the module's PHP: the SQL is core's, so the table above can't see it.
+$writerMethods = ['EventAuditLogger::recordDisclosure' => 'extended_log', 'EventAuditLogger::updateRecordedDisclosure' => 'extended_log', 'EventAuditLogger::deleteDisclosure' => 'extended_log'];
+$viaMethods = [];
+foreach ($writerMethods as $method => $table) {
+    foreach ($sources as $rel => $phpSource) {
+        if (preg_match('/->' . substr($method, strpos($method, '::') + 2) . '\(/', $phpSource) === 1) {
+            $viaMethods[] = "`$table` (`$method()`, from `$rel`)";
+        }
+    }
+}
 $md[] = ($coreWrites === []
     ? '**In its own SQL it writes only to its own tables.**'
     : '**In its own SQL it writes to OpenEMR core tables:** ' . implode(', ', array_map(fn($t) => "`$t`", $coreWrites)) . '.')
-    . ($viaFunctions === [] ? '' : ' Through OpenEMR functions it also writes ' . implode(', ', array_map(fn($f, $t) => "`$t` (`$f()`)", array_keys($viaFunctions), $viaFunctions)) . '.');
+    . ($viaFunctions === [] ? '' : ' Through OpenEMR functions it also writes ' . implode(', ', array_map(fn($f, $t) => "`$t` (`$f()`)", array_keys($viaFunctions), $viaFunctions)) . '.')
+    . ($viaMethods === [] ? '' : ' Through OpenEMR methods it also writes ' . implode(', ', $viaMethods) . '.');
 $md[] = '';
 $md[] = '## OpenEMR functions it calls';
 $md[] = '';

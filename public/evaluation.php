@@ -72,10 +72,12 @@ if (($_GET['format'] ?? '') === 'csv' && $schedule !== null) {
 }
 ?>
 <!DOCTYPE html>
-<html>
+<?php // The module's own text is written in English. ?>
+<html lang="en">
 <head>
     <title><?php echo xlt('Sliding fee evaluation'); ?></title>
     <?php Header::setupHeader(); ?>
+    <style>/* Links in running text are underlined, not told apart by colour alone (WCAG 1.4.1). */ p a, li a { text-decoration: underline; }</style>
 </head>
 <body class="body_top">
 <div class="container-fluid py-3">

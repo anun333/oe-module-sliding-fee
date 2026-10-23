@@ -34,7 +34,8 @@ $findings = $schedule === null ? [] : ScheduleCheck::run($schedule, $context->gu
 $pid = (int)($session->get('pid') ?? 0);
 ?>
 <!DOCTYPE html>
-<html>
+<?php // The module's own text is written in English. ?>
+<html lang="en">
 <head>
     <title><?php echo xlt('Sliding Fee Discount'); ?></title>
     <?php Header::setupHeader(); ?>
