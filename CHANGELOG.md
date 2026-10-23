@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 (unreleased)
+## 0.3.0 (2026-10-22)
 
 - **Clinic Forms' sliding fee notice, filled with the schedule in force.** With Clinic Forms installed (0.33.0 or later), its notice's discounts table prints, for household sizes 1 to 8, the yearly income up to which the full discount applies (100% of the poverty guideline) and up to which a partial discount applies (the highest pay class, rounded down). A note says it's from the schedule in force and which year's guidelines. English and Spanish, printed or downloaded.
   - It answers Clinic Forms' `clinic_forms.document.fill` event and needs none of Clinic Forms' classes.
