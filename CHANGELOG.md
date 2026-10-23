@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0 (unreleased)
+
+- **No longer stops an older OpenEMR.** OpenEMR loads a module's bootstrap on every request, the login page included. This module's used `OEGlobalsBag`, which came with OpenEMR 7.0.4 and 8.0, so on 7.0.3 or older, enabling it made every page fail (HTTP 500), login included, until the module was switched off in the database. It now stays switched off there instead. Found by the nightly matrix's new fresh 7.0.2 install (`dev/module_compat_check.sh`).
+- **Title X schedules.** A schedule can follow Title X's rules (42 CFR 59.5(a)(7) and (8)) instead of HRSA's: a health center with a Title X project gives its family planning visits a service schedule on them.
+  - **Checked as it's saved:** a nominal charge at or below 100% is refused (and none is ever charged); the last pay class must reach 250%; a discount above 250% is a warning. HRSA's three-classes, 200% and board-approval checks don't apply there.
+  - **Insured clients** pay no more than the discount schedule charges at or below 250% (59.5(a)(8)(ii)), as every visit's discount already works.
+- **What an assessment is based on** (42 CFR 59.2), offered when a Title X schedule is in force: the family's income, a minor's own resources (confidential services), or the project director counting the patient as low-income, with the reason in the note. The director's patient is at or below 100% on a Title X schedule. A minor's own-resources assessment leaves Demographics with the family's figures.
+  - **Database:** a `basis` column on `sliding_fee_assessment` (`sql/0_3_0-to-0_4_0_upgrade.sql`, also in `install.sql`; guarded). Module Manager offers the upgrade.
+- **Not moved:** the re-assessments-due tab stays the Staff Worklist's own for now (its row keys would change, bringing back dismissed rows); Title X doesn't change re-assessment.
+
 ## 0.3.0 (2026-10-22)
 
 - **Clinic Forms' sliding fee notice, filled with the schedule in force.** With Clinic Forms installed (0.33.0 or later), its notice's discounts table prints, for household sizes 1 to 8, the yearly income up to which the full discount applies (100% of the poverty guideline) and up to which a partial discount applies (the highest pay class, rounded down). A note says it's from the schedule in force and which year's guidelines. English and Spanish, printed or downloaded.

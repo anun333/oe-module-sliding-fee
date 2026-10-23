@@ -39,7 +39,7 @@ final class AssessmentRepository
         }
         $in = implode(', ', array_fill(0, count($pids), '?'));
         $rows = QueryUtils::fetchRecords(
-            "SELECT `id`, `pid`, `assessed_on`, `method`, `annual_income`, `family_size`, `percent`, `class_label`
+            "SELECT `id`, `pid`, `assessed_on`, `method`, `annual_income`, `family_size`, `percent`, `class_label`, `basis`
                FROM `sliding_fee_assessment` WHERE `pid` IN ($in) ORDER BY `assessed_on` DESC, `id` DESC",
             $pids,
         );
@@ -54,6 +54,7 @@ final class AssessmentRepository
                 $r['family_size'] === null ? null : (int)$r['family_size'],
                 $r['percent'] === null ? null : (float)$r['percent'],
                 (string)$r['class_label'],
+                in_array($r['basis'] ?? null, Assessment::BASES, true) ? (string)$r['basis'] : Assessment::FAMILY,
             );
         }
         return $out;
@@ -78,12 +79,14 @@ final class AssessmentRepository
     public function add(Assessment $a, ?int $scheduleId, string $note, int $userId): int
     {
         $id = (int)QueryUtils::sqlInsert(
-            'INSERT INTO `sliding_fee_assessment` (`pid`, `assessed_on`, `method`, `annual_income`, `family_size`, `percent`, `class_label`, `schedule_id`, `note`, `user_id`)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO `sliding_fee_assessment` (`pid`, `assessed_on`, `method`, `annual_income`, `family_size`, `percent`, `class_label`, `basis`, `schedule_id`, `note`, `user_id`)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [$a->pid, $a->assessedOn->format('Y-m-d'), $a->method, $a->annualIncome, $a->familySize,
-                $a->percent === null ? null : round($a->percent, 2), $a->classLabel, $scheduleId, $note, $userId],
+                $a->percent === null ? null : round($a->percent, 2), $a->classLabel, $a->basis, $scheduleId, $note, $userId],
         );
-        if ($a->method !== Assessment::DECLINED && $a->annualIncome !== null && $a->familySize !== null) {
+        // Demographics take the family's figures. A minor assessed on their own resources keeps the
+        // family's: the minor's own income isn't the family's, and the visit is confidential.
+        if ($a->method !== Assessment::DECLINED && $a->annualIncome !== null && $a->familySize !== null && $a->basis !== Assessment::OWN_RESOURCES) {
             require_once OEGlobalsBag::getInstance()->getSrcDir() . '/patient.inc.php';
             updatePatientData($a->pid, [
                 'family_size' => (string)$a->familySize,

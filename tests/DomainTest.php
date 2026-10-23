@@ -238,6 +238,66 @@ final class DomainTest extends TestCase
         $this->assertStringStartsWith('Según', NoticeTable::note(self::schedule(), 'es'));
     }
 
+    public function testTitleXChargesNothingAtOrBelow100EvenWithANominalChargeEntered(): void
+    {
+        $hrsa = self::schedule(atOrBelow100: Schedule::NOMINAL, nominal: 10);
+        $titleX = self::titleX(atOrBelow100: Schedule::NOMINAL, nominal: 10);
+        $this->assertSame(10.0, $hrsa->chargeFor(Schedule::AT_OR_BELOW_100, 50));
+        $this->assertSame(0.0, $titleX->chargeFor(Schedule::AT_OR_BELOW_100, 50), '42 CFR 59.5(a)(7): no charge for a low-income family');
+    }
+
+    public function testTitleXSchedulesAreCheckedAgainstTitleXNotHrsa(): void
+    {
+        $today = new \DateTimeImmutable(self::TODAY);
+        $errors = static fn(Schedule $s): array => array_column(array_filter(ScheduleCheck::run($s, self::guidelines(), [150.0], $today), static fn(array $f): bool => $f['level'] === ScheduleCheck::ERROR), 'message');
+        $warnings = static fn(Schedule $s): array => array_column(array_filter(ScheduleCheck::run($s, self::guidelines(), [150.0], $today), static fn(array $f): bool => $f['level'] === ScheduleCheck::WARNING), 'message');
+
+        // Discounts to 250%, two classes up to 200%: compliant for Title X, though HRSA would want three to 200% and nothing above it.
+        $good = self::titleX();
+        $this->assertSame([], $errors($good));
+        $this->assertSame([], array_values(array_filter($warnings($good), static fn(string $w): bool => str_contains($w, 'board'))), 'Title X asks nothing of a board');
+        $this->assertNotSame([], $errors(self::schedule(classes: self::titleXClasses())), 'the same classes on HRSA rules are errors');
+
+        $this->assertStringContainsString('59.5(a)(7)', implode(' ', $errors(self::titleX(atOrBelow100: Schedule::NOMINAL, nominal: 5))));
+        $this->assertStringContainsString('250%', implode(' ', $errors(self::titleX(classes: self::classes()))), 'classes that stop at 200% leave 201% to 250% without a discount');
+        $this->assertStringContainsString('above 250%', implode(' ', $warnings(self::titleX(classes: [...self::titleXClasses(), self::c('D', 300, 'percent', 10)]))));
+    }
+
+    public function testThePatientADirectorCountsAsLowIncomeIsAtOrBelow100OnTitleXOnly(): void
+    {
+        $director = new Assessment(1, 7, new \DateTimeImmutable('2026-02-01'), Assessment::DOCUMENTS, 100000, 2, null, Schedule::NO_DISCOUNT, Assessment::DIRECTOR);
+        $family = new Assessment(2, 7, new \DateTimeImmutable('2026-02-01'), Assessment::DOCUMENTS, 100000, 2, null, Schedule::NO_DISCOUNT);
+        $onTitleX = $director->on(self::titleX(), self::guidelines());
+        $this->assertSame(Schedule::AT_OR_BELOW_100, $onTitleX->classLabel, '42 CFR 59.2: unable, for good reasons, to pay');
+        $this->assertGreaterThan(250, $onTitleX->percent, 'the income and percentage are kept as recorded');
+        $this->assertSame(Assessment::DIRECTOR, $onTitleX->basis);
+        $this->assertSame(Schedule::NO_DISCOUNT, $director->on(self::schedule(), self::guidelines())->classLabel, 'an HRSA schedule places them by income');
+        $this->assertSame(Schedule::NO_DISCOUNT, $family->on(self::titleX(), self::guidelines())->classLabel);
+    }
+
+    public function testAnInsuredTitleXClientPaysNoMoreThanTheirDiscountedCharge(): void
+    {
+        // 42 CFR 59.5(a)(8)(ii): at or below 250%, copays and fees no more than the schedule of discounts charges.
+        // $100 fee, insurance paid $30, class A takes 75% off: the patient pays $25, not the $70 left.
+        $s = self::titleX();
+        $client = new Assessment(1, 7, new \DateTimeImmutable('2026-10-01'), Assessment::DOCUMENTS, 21000, 1, 140.0, 'A');
+        $result = VisitDiscount::compute($s, $client, 100, 30, 0, 0, 0, 0, true, true);
+        $this->assertSame([25.0, 70.0, 45.0], [$result['charge'], $result['balance'], $result['post']]);
+        // Class C takes 25% off, so pays $75: more than the $70 left, so nothing is owed as a discount.
+        $c = new Assessment(2, 7, new \DateTimeImmutable('2026-10-01'), Assessment::DOCUMENTS, 36000, 1, 225.0, 'C');
+        $this->assertSame(0.0, VisitDiscount::compute($s, $c, 100, 30, 0, 0, 0, 0, true, true)['post']);
+    }
+
+    public function testTheRulesSurviveStorageAndAServiceSchedule(): void
+    {
+        $titleX = self::titleX();
+        $this->assertSame(Schedule::TITLE_X, Schedule::fromArray($titleX->toArray())->rules);
+        $this->assertSame(Schedule::HRSA, Schedule::fromArray(['rules' => 'something else'])->rules, 'anything else is HRSA');
+        $this->assertSame(Schedule::HRSA, Schedule::fromArray([])->rules, 'a schedule saved before 0.4.0 is HRSA');
+        $familyPlanning = Schedule::fromArray($titleX->toArray() + [])->withProgram(self::schedule());
+        $this->assertTrue($familyPlanning->isTitleX(), 'a service schedule keeps its own rules');
+    }
+
     private static function guidelines(): PovertyGuidelines
     {
         return PovertyGuidelines::fromFile(__DIR__ . '/../data/poverty-guidelines.json');
@@ -325,6 +385,19 @@ final class DomainTest extends TestCase
         ?string $approvedOn = '2026-01-15',
     ): Schedule {
         return new Schedule($region, $year, $atOrBelow100, $nominal, $classes ?? self::classes(), 12, $reasons, false, $approvedOn);
+    }
+
+    /** @param list<array{label: string, upTo: float, method: string, value: float}>|null $classes */
+    private static function titleX(string $atOrBelow100 = Schedule::FULL, float $nominal = 0, ?array $classes = null): Schedule
+    {
+        return new Schedule('contiguous', 2026, $atOrBelow100, $nominal, $classes ?? self::titleXClasses(), 12, ['Sliding fee discount'], false, null,
+            Schedule::MAIN, '', [], Schedule::TITLE_X);
+    }
+
+    /** @return list<array{label: string, upTo: float, method: string, value: float}> */
+    private static function titleXClasses(): array
+    {
+        return [self::c('A', 150, 'percent', 75), self::c('B', 200, 'percent', 50), self::c('C', 250, 'percent', 25)];
     }
 
     private static function assessment(string $class): Assessment

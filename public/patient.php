@@ -56,6 +56,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $schedule !== null) {
     $on = DateTimeImmutable::createFromFormat('!Y-m-d', (string)($_POST['assessed_on'] ?? ''));
     $income = is_numeric($_POST['annual_income'] ?? null) ? (float)$_POST['annual_income'] : null;
     $size = is_numeric($_POST['family_size'] ?? null) ? (int)$_POST['family_size'] : null;
+    $basis = in_array($_POST['basis'] ?? '', Assessment::BASES, true) ? (string)$_POST['basis'] : Assessment::FAMILY;
+    $note = trim((string)($_POST['note'] ?? ''));
+    if ($basis === Assessment::DIRECTOR && $note === '') {
+        $errors[] = xl('Record the reason of the project director in the note: Title X counts a patient as low-income when they are unable, for good reasons, to pay (42 CFR 59.2).');
+    }
     if ($method === '') {
         $errors[] = xl('Choose how the income was documented, or that the patient declined.');
     }
@@ -68,10 +73,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $schedule !== null) {
     if ($errors === [] && $on !== false) {
         $percent = $method === Assessment::DECLINED || $income === null || $size === null ? null : $context->guidelines->percent($income, $size, $schedule->year, $schedule->region);
         $class = $percent === null ? Schedule::NO_DISCOUNT : $schedule->classFor($percent);
-        $assessment = new Assessment(0, $pid, $on, $method, $method === Assessment::DECLINED ? null : $income, $method === Assessment::DECLINED ? null : $size, $percent, $class);
-        $id = $repo->add($assessment, $context->scheduleId, trim((string)($_POST['note'] ?? '')), (int)$session->get('authUserID'));
+        $assessment = new Assessment(0, $pid, $on, $method, $method === Assessment::DECLINED ? null : $income, $method === Assessment::DECLINED ? null : $size, $percent, $class, $basis);
+        $id = $repo->add($assessment, $context->scheduleId, $note, (int)$session->get('authUserID'));
         EventAuditLogger::getInstance()->newEvent('patient-record-update', (string)$session->get('authUser'), (string)$session->get('authProvider'), 1,
-            "Sliding Fee Discount: assessment $id recorded ($method)", $pid);
+            "Sliding Fee Discount: assessment $id recorded ($method, $basis)", $pid);
         $saved = true;
     }
 }
@@ -141,6 +146,15 @@ $monthly = is_numeric($patient['monthly_income'] ?? null) ? (float)$patient['mon
                     <?php foreach (Assessment::METHODS as $m) { ?><option value="<?php echo attr($m); ?>"><?php echo text(Labels::method($m)); ?></option><?php } ?>
                 </select>
             </div>
+            <?php if (array_filter(array_column($context->inForce, 'schedule'), static fn(Schedule $s): bool => $s->isTitleX()) !== []) { ?>
+            <div class="form-group col-md-3">
+                <label for="basis"><?php echo xlt('Based on'); ?></label>
+                <select class="form-control form-control-sm" id="basis" name="basis" aria-describedby="basis-help">
+                    <?php foreach (Assessment::BASES as $b) { ?><option value="<?php echo attr($b); ?>"><?php echo text(Labels::basis($b)); ?></option><?php } ?>
+                </select>
+                <small id="basis-help" class="form-text text-muted"><?php echo xlt('Title X only (42 CFR 59.2). For a minor assessed on own resources, enter the income of the minor and a family size of 1; the family figures in Demographics are left as they are.'); ?></small>
+            </div>
+            <?php } ?>
             <div class="form-group col-md-3">
                 <label for="note"><?php echo xlt('Note'); ?></label>
                 <input class="form-control form-control-sm" id="note" name="note" maxlength="500">

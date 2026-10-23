@@ -22,8 +22,17 @@ final class Assessment
     public const DECLINED = 'declined';
     public const METHODS = [self::DOCUMENTS, self::SELF_DECLARED, self::DECLINED];
 
+    /** The family's income and size: the usual basis. */
+    public const FAMILY = 'family';
+    /** The patient's own resources: an unemancipated minor seeking confidential services (Title X, 42 CFR 59.2). */
+    public const OWN_RESOURCES = 'own_resources';
+    /** Counted as from a low-income family by the project director, unable for good reasons to pay (Title X, 42 CFR 59.2). */
+    public const DIRECTOR = 'director';
+    public const BASES = [self::FAMILY, self::OWN_RESOURCES, self::DIRECTOR];
+
     /**
      * @param string $classLabel Schedule::AT_OR_BELOW_100, a pay class label or Schedule::NO_DISCOUNT, as assessed
+     * @param string $basis      FAMILY, OWN_RESOURCES or DIRECTOR
      */
     public function __construct(
         public readonly int $id,
@@ -34,6 +43,7 @@ final class Assessment
         public readonly ?int $familySize,
         public readonly ?float $percent,
         public readonly string $classLabel,
+        public readonly string $basis = self::FAMILY,
     ) {
     }
 
@@ -41,6 +51,8 @@ final class Assessment
      * This assessment placed on a schedule: the percentage and class from the income and family size
      * recorded, against the schedule's guidelines year and region, so a new year's guidelines apply
      * to everyone once the clinic adopts them. A declined assessment, or one without figures, is unchanged.
+     * On a Title X schedule, a patient the project director counts as low-income is placed at or below
+     * 100% whatever the income (42 CFR 59.2); the percentage is kept as recorded.
      */
     public function on(Schedule $schedule, PovertyGuidelines $guidelines): self
     {
@@ -51,7 +63,8 @@ final class Assessment
         if ($percent === null) {
             return $this;
         }
-        return new self($this->id, $this->pid, $this->assessedOn, $this->method, $this->annualIncome, $this->familySize, $percent, $schedule->classFor($percent));
+        $class = $this->basis === self::DIRECTOR && $schedule->isTitleX() ? Schedule::AT_OR_BELOW_100 : $schedule->classFor($percent);
+        return new self($this->id, $this->pid, $this->assessedOn, $this->method, $this->annualIncome, $this->familySize, $percent, $class, $this->basis);
     }
 
     public function expiresOn(int $months): \DateTimeImmutable

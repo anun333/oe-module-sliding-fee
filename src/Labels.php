@@ -43,6 +43,16 @@ final class Labels
         };
     }
 
+    public static function basis(string $basis): string
+    {
+        return match ($basis) {
+            Assessment::FAMILY => xl('Family income'),
+            Assessment::OWN_RESOURCES => xl('Own resources of a minor seeking confidential services'),
+            Assessment::DIRECTOR => xl('Counted as low-income by the project director'),
+            default => $basis,
+        };
+    }
+
     public static function money(float $amount): string
     {
         return '$' . number_format($amount, 2);

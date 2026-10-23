@@ -35,6 +35,12 @@ CREATE TABLE `sliding_fee_assessment` (
 ) ENGINE=InnoDB COMMENT='Sliding Fee Discount: each income assessment of a patient';
 #EndIf
 
+-- 0.4.0: what an assessment is based on (Title X, 42 CFR 59.2). The same block is in
+-- 0_3_0-to-0_4_0_upgrade.sql; it is guarded, so running both changes nothing.
+#IfMissingColumn sliding_fee_assessment basis
+ALTER TABLE `sliding_fee_assessment` ADD `basis` VARCHAR(16) NOT NULL DEFAULT 'family' COMMENT 'family, own_resources (a minor assessed on their own resources) or director (counted as low-income by the project director)';
+#EndIf
+
 -- The Adjustment Reason to post discounts under, as a charge adjustment (option_value 1),
 -- unless the clinic already has one by that name.
 #IfNotRow2D list_options list_id adjreason option_id Sliding fee discount

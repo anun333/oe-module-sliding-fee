@@ -11,6 +11,12 @@
  * categories it names. The guidelines region and year and the re-assessment period
  * belong to the program, so a service schedule takes them from the main one.
  *
+ * Each schedule follows one program's rules: HRSA's Health Center Program (Compliance
+ * Manual Chapter 9), or Title X family planning (42 CFR 59.5(a)(7) and (8)): no charge at
+ * or below 100%, discounts to 250%, fees that recover reasonable cost above it. A health
+ * center with a Title X project gives its family planning visits a service schedule on
+ * Title X rules.
+ *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
  * @author    anun333 <anun333@posteo.net>
@@ -34,6 +40,10 @@ final class Schedule
     /** The service key of the main schedule, which covers every visit no other schedule claims. */
     public const MAIN = 'main';
 
+    public const HRSA = 'hrsa';
+    public const TITLE_X = 'title-x';
+    public const RULES = [self::HRSA, self::TITLE_X];
+
     /**
      * @param string                                                     $atOrBelow100 FULL or NOMINAL
      * @param float                                                      $nominal      the flat charge per visit when NOMINAL
@@ -43,6 +53,7 @@ final class Schedule
      * @param string                                                     $service      MAIN, or the key of a service schedule
      * @param string                                                     $name         what staff call a service schedule, such as Dental
      * @param list<int>                                                  $categories   the visit categories a service schedule covers
+     * @param string                                                     $rules        HRSA or TITLE_X
      */
     public function __construct(
         public readonly string $region,
@@ -57,7 +68,13 @@ final class Schedule
         public readonly string $service = self::MAIN,
         public readonly string $name = '',
         public readonly array $categories = [],
+        public readonly string $rules = self::HRSA,
     ) {
+    }
+
+    public function isTitleX(): bool
+    {
+        return $this->rules === self::TITLE_X;
     }
 
     public function isMain(): bool
@@ -69,7 +86,7 @@ final class Schedule
     public function withProgram(self $main): self
     {
         return new self($main->region, $main->year, $this->atOrBelow100, $this->nominal, $this->classes, $main->reassessMonths,
-            $this->reasons, $this->otherFundingAbove200, $this->approvedOn, $this->service, $this->name, $this->categories);
+            $this->reasons, $this->otherFundingAbove200, $this->approvedOn, $this->service, $this->name, $this->categories, $this->rules);
     }
 
     /**
@@ -131,7 +148,8 @@ final class Schedule
     {
         $fees = max(0.0, $fees);
         if ($class === self::AT_OR_BELOW_100) {
-            return $this->atOrBelow100 === self::NOMINAL ? min($this->nominal, $fees) : 0.0;
+            // Title X allows no charge at all here (42 CFR 59.5(a)(7)), whatever the form holds.
+            return $this->atOrBelow100 === self::NOMINAL && !$this->isTitleX() ? min($this->nominal, $fees) : 0.0;
         }
         $row = $this->classNamed($class);
         if ($row === null) {
@@ -157,6 +175,7 @@ final class Schedule
             'service' => $this->service,
             'name' => $this->name,
             'categories' => $this->categories,
+            'rules' => $this->rules,
         ];
     }
 
@@ -202,6 +221,7 @@ final class Schedule
             preg_match('/^[a-z0-9-]+$/', $service) === 1 ? $service : self::MAIN,
             trim((string)($data['name'] ?? '')),
             $service === self::MAIN ? [] : $categories,
+            in_array($data['rules'] ?? null, self::RULES, true) ? (string)$data['rules'] : self::HRSA,
         );
     }
 }

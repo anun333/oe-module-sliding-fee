@@ -1,9 +1,11 @@
 <?php
 
 /**
- * Checks a sliding fee discount schedule against HRSA's Health Center Program
- * Compliance Manual, Chapter 9 (element c, structure; element e, current guidelines;
- * element l and Chapter 19, board approval and evaluation every three years). An error
+ * Checks a sliding fee discount schedule against its program's rules. HRSA's Health
+ * Center Program Compliance Manual, Chapter 9 (element c, structure; element e, current
+ * guidelines; element l and Chapter 19, board approval and evaluation every three years),
+ * or Title X (42 CFR 59.5(a)(7) and (8): no charge at or below 100% of the guidelines, a
+ * schedule of discounts to 250%, fees that recover reasonable cost above it). An error
  * is a requirement the schedule doesn't meet; a warning is something to check by hand.
  *
  * @package   OpenEMR
@@ -58,16 +60,19 @@ final class ScheduleCheck
             }
         }
 
+        if ($s->isTitleX()) {
+            self::titleX($s, $bounds, $errors, $warnings);
+        }
         $middle = array_values(array_filter($classes, static fn(array $c): bool => $c['upTo'] > 100 && $c['upTo'] <= 200));
-        if (count($middle) < 3) {
+        if (!$s->isTitleX() && count($middle) < 3) {
             $errors[] = sprintf(xl('There are %1$s pay classes between 101%% and 200%%; HRSA requires at least three (element c).'), count($middle));
         }
         $last = $classes === [] ? 100.0 : max($bounds);
-        if ($last < 200) {
+        if (!$s->isTitleX() && $last < 200) {
             $errors[] = sprintf(xl('The last pay class ends at %1$s%%: incomes above that and up to 200%% would get no discount (element c).'), self::number($last));
         }
         $above = array_values(array_filter($classes, static fn(array $c): bool => $c['upTo'] > 200));
-        if ($above !== [] && !$s->otherFundingAbove200) {
+        if (!$s->isTitleX() && $above !== [] && !$s->otherFundingAbove200) {
             $errors[] = xl('A pay class goes above 200%: HRSA allows discounts there only when other funding pays for them (element c). Tick that box if it does.');
         }
 
@@ -82,18 +87,20 @@ final class ScheduleCheck
                 $errors[] = sprintf(xl('Pay class %1$s charges less than %2$s, which has lower incomes: discounts must shrink as income rises.'), $next['label'], $prev['label']);
             }
         }
-        if (count($middle) >= 3 && count(array_unique(array_map(static fn(array $c): string => $c['method'] . ':' . $c['value'], $middle))) === 1) {
+        if (!$s->isTitleX() && count($middle) >= 3 && count(array_unique(array_map(static fn(array $c): string => $c['method'] . ':' . $c['value'], $middle))) === 1) {
             $warnings[] = xl('Every pay class between 101% and 200% has the same discount; HRSA expects discounts that adjust with income (element c).');
         }
 
-        if ($s->atOrBelow100 === Schedule::NOMINAL) {
+        if ($s->atOrBelow100 === Schedule::NOMINAL && !$s->isTitleX()) {
             $errors = array_merge($errors, self::nominal($s, $fees, $warnings));
         }
 
         if ($s->reasons === []) {
             $warnings[] = xl('No Adjustment Reason is marked as a sliding fee discount, so the evaluation report can find none of the discounts posted.');
         }
-        if ($s->approvedOn === null) {
+        if ($s->isTitleX()) {
+            // Title X asks nothing of a board; the HRSA approval and evaluation checks don't apply.
+        } elseif ($s->approvedOn === null) {
             $warnings[] = xl('Record when the board approved the schedule: HRSA asks the board to approve it, and to evaluate the program at least once every three years (element l, Chapter 19).');
         } elseif (new \DateTimeImmutable($s->approvedOn) < $today->modify('-3 years')) {
             $warnings[] = sprintf(xl('The board approved the schedule on %1$s, more than three years ago: the program is due for its evaluation (element l).'), $s->approvedOn);
@@ -103,6 +110,30 @@ final class ScheduleCheck
             array_map(static fn(string $m): array => ['level' => self::ERROR, 'message' => $m], $errors),
             array_map(static fn(string $m): array => ['level' => self::WARNING, 'message' => $m], $warnings),
         );
+    }
+
+    /**
+     * Title X (42 CFR 59.5(a)(7) and (8)).
+     *
+     * @param list<float>  $bounds   each class's upper percentage
+     * @param list<string> $errors   added to
+     * @param list<string> $warnings added to
+     */
+    private static function titleX(Schedule $s, array $bounds, array &$errors, array &$warnings): void
+    {
+        if ($s->atOrBelow100 === Schedule::NOMINAL) {
+            $errors[] = xl('Title X allows no charge at or below 100% of the guidelines (42 CFR 59.5(a)(7)): choose the full discount.');
+        }
+        $last = $bounds === [] ? 100.0 : max($bounds);
+        if ($last < 250) {
+            $errors[] = sprintf(xl('The last pay class ends at %1$s%%: Title X charges incomes up to 250%% on a schedule of discounts (42 CFR 59.5(a)(8)).'), self::number($last));
+        }
+        if ($bounds !== [] && $last > 250) {
+            $warnings[] = xl('A pay class goes above 250%: Title X charges incomes above 250% fees that recover the reasonable cost of the services (42 CFR 59.5(a)(8)). Check the discount there is intended.');
+        }
+        if (count($bounds) === 1) {
+            $warnings[] = xl('One pay class covers all incomes from 101% to 250%: check that charges are based on ability to pay (42 CFR 59.5(a)(8)).');
+        }
     }
 
     /**

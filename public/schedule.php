@@ -80,6 +80,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         'service' => $key,
         'name' => $isMain ? '' : $name,
         'categories' => is_array($_POST['categories'] ?? null) ? $_POST['categories'] : [],
+        'rules' => $_POST['rules'] ?? '',
     ]);
     $problems = [];
     if (!$isMain) {
@@ -228,6 +229,15 @@ $number = static fn(mixed $v): string => is_float($v) || is_int($v) ? rtrim(rtri
                 <label for="reassessMonths"><?php echo xlt('Re-assess every (months)'); ?></label>
                 <input type="number" min="1" max="60" class="form-control form-control-sm" id="reassessMonths" name="reassessMonths" value="<?php echo attr((string)$form->reassessMonths); ?>">
             </div>
+        </div>
+
+        <div class="form-group">
+            <label for="rules"><?php echo xlt('Program rules'); ?></label>
+            <select class="form-control form-control-sm w-auto" id="rules" name="rules" aria-describedby="rules-help">
+                <option value="<?php echo attr(Schedule::HRSA); ?>" <?php echo $form->isTitleX() ? '' : 'selected'; ?>><?php echo xlt('HRSA Health Center Program (Compliance Manual Chapter 9)'); ?></option>
+                <option value="<?php echo attr(Schedule::TITLE_X); ?>" <?php echo $form->isTitleX() ? 'selected' : ''; ?>><?php echo xlt('Title X family planning (42 CFR 59.5)'); ?></option>
+            </select>
+            <small id="rules-help" class="form-text text-muted"><?php echo xlt('Title X: no charge at or below 100%, discounts to 250%, fees that recover reasonable cost above it. A health center with a Title X project gives its family planning visits a service schedule on Title X rules.'); ?></small>
         </div>
 
         <fieldset class="form-group">

@@ -39,12 +39,23 @@ What installing it changes in your database, what it reads and writes, and what 
   - **The main schedule** covers every visit no other schedule claims.
   - **A service schedule** covers the visit categories you choose. It has its own pay classes, charge at or below 100% (HRSA: one nominal charge per schedule), Adjustment Reasons and approval date.
   - **Shared settings:** a service schedule takes the guidelines region and year and the re-assessment period from the main one, since a patient's income assessment covers every service.
-  - **Rules:** each visit category belongs to one schedule at most. Each schedule gets the same compliance check.
+  - **Rules:** each visit category belongs to one schedule at most. Each schedule gets the compliance check for its program's rules.
+- **Title X schedules (0.4.0):** a schedule can follow Title X's rules instead of HRSA's. A health center with a Title X project gives its family planning visits a service schedule on Title X rules; a Title X-only clinic sets its main schedule so.
+
+  | Check, on a Title X schedule | Basis |
+  |---|---|
+  | No charge at or below 100%: a nominal charge is refused, and none is charged | 42 CFR 59.5(a)(7) |
+  | Discounts based on ability to pay up to 250%, so the last pay class reaches 250% | 59.5(a)(8) |
+  | A warning for a discount above 250%, where fees recover the reasonable cost | 59.5(a)(8) |
+  | Discounts that shrink as income rises, and the newest guidelines year loaded | as for HRSA |
+
+  HRSA's own checks (three classes to 200%, no discount above 200%, board approval) don't apply to a Title X schedule. The insured cap of 59.5(a)(8)(ii), no more in copays than the discount schedule charges at or below 250%, is how every visit's discount already works (element k).
 - **Assessment** (from the patient's dashboard card):
   - **Recorded:** annual income, family size, the date, and how it was documented (documents seen, self-declared, or declined), with a note.
   - **Shown:** the percentage of the guidelines and the pay class.
   - **Kept:** every assessment, as element g asks.
   - **Demographics:** saving one also updates family size, monthly income and Financial Review Date there, through OpenEMR's own `updatePatientData()`. Everything that reads those fields, such as a UDS Table 4 report, sees the same income.
+  - **Based on (Title X, 0.4.0):** with a Title X schedule in force, an assessment also records what it rests on: the family's income (as before); the own resources of an unemancipated minor seeking confidential services; or the project director counting the patient as low-income, unable for good reasons to pay, with the reason in the note (42 CFR 59.2). On a Title X schedule, the director's patient is placed at or below 100% whatever the income; on an HRSA schedule, by income. A minor's own-resources assessment leaves Demographics with the family's figures.
   - **The policy is yours:** the clinic decides what counts as income and family, what proof to ask for, and how often to re-assess. HRSA leaves all of that to the health center.
 - **Dashboard card:** the patient's pay class, the percentage, how it was documented, and when re-assessment is due.
 - **A visit's discount:** the schedule for the visit's category, the pay class in force on the date of service (the patient's income placed on that schedule's classes), the charges at full fee, what insurance and the patient have paid, the most the patient pays, and the discount to post now.
@@ -87,7 +98,8 @@ Viewing a patient's assessments, a visit's discount or the re-assessments due li
 
 - **Posting the discount itself.** It writes to accounts receivable, so it waits until the calculator has been checked against real visits.
 - **Discounts above 200%** funded from other sources, beyond the flag on the schedule.
-- **Re-assessments due as a Staff Worklist tab.** The list is on this module's own page for now.
+- **Re-assessments due as a Staff Worklist tab of this module's own.** The Staff Worklist reads this module's tables for its tab today. Moving the tab here changes its row keys, which would bring back every row staff have dismissed, so it waits until a change to re-assessment needs it; Title X doesn't.
+- **Title X's confidentiality (42 CFR 59.10):** what a policyholder may see of a confidential visit is a question for statements and claims, which are OpenEMR's.
 
 ## Install
 
@@ -98,6 +110,8 @@ composer require anun333/oe-module-sliding-fee
 Then in OpenEMR, Modules › Manage Modules: Register, Install and Enable **Sliding Fee Discount**. Set up the schedule from your board-approved policy before assessing patients.
 
 ## Compatibility
+
+**Older OpenEMR:** on 7.0.3 and older (no `OEGlobalsBag`), the module stays switched off rather than stop OpenEMR's pages; it hasn't been tested from 7.0.4 to 8.3. Checked on a fresh 7.0.2 install with every module enabled (`dev/module_compat_check.sh`).
 
 Tested with synthetic data on OpenEMR 8.4.1 (Docker image `openemr/openemr:8.4.1`), with `dev/sliding_fee_check.py` in the openhealthcare repository. That check:
 - installs the module through Module Manager;
@@ -125,6 +139,7 @@ The unit tests need no database or OpenEMR install. CI runs them, and the footpr
 ## Sources
 
 - HRSA, Health Center Program Compliance Manual, [Chapter 9: Sliding Fee Discount Program](https://bphc.hrsa.gov/compliance/compliance-manual/chapter9), with Chapters 16 and 19, the [Site Visit Protocol](https://bphc.hrsa.gov/compliance/site-visits/site-visit-protocol/sliding-fee-discount-program) and the compliance FAQ, read 2026-10-18.
+- 42 CFR 59.2 and 59.5(a)(7) to (9), Title X, read from the eCFR as of 2026-10-20.
 - HHS poverty guidelines for 2026, 91 FR 1797 (January 15, 2026), in [data/poverty-guidelines.json](data/poverty-guidelines.json). A year and region whose figures aren't filled in are shown as not loaded, never estimated.
 
 ## Other modules for OpenEMR
