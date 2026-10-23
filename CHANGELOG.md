@@ -4,6 +4,7 @@
 
 - Development: the test for translated strings with an apostrophe or quote mark uses [openhealthcare-common](https://github.com/anun333/openhealthcare-common)'s scan, the same one every openhealthcare module runs. It is a development dependency only; nothing installed changes.
 - **Accessibility:** every page declares its language (`<html lang>`), and links in running text on the schedule and evaluation pages are underlined.
+- **FOOTPRINT.md** now comes from openhealthcare-common's footprint tool (1.1), the one every module shares; `tools/footprint.php` only loads it. The sheet's closing notes, what it can't show, are this module's own (in composer.json): the old ones were the Staff Worklist's, and said this module's permission checks had been verified end to end with restricted users, which they haven't.
 
 ## 0.4.0 (2026-10-22)
 
