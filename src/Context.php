@@ -17,6 +17,7 @@ namespace OpenHealthcare\SlidingFee;
 use OpenHealthcare\SlidingFee\Domain\PovertyGuidelines;
 use OpenHealthcare\SlidingFee\Domain\Schedule;
 use OpenHealthcare\SlidingFee\Repository\ScheduleRepository;
+use OpenHealthcare\Common\OpenEmr;
 
 final class Context
 {
@@ -69,7 +70,7 @@ final class Context
 
     public static function url(string $page, array $query = []): string
     {
-        return \OpenEMR\Core\OEGlobalsBag::getInstance()->getWebRoot() . Bootstrap::MODULE_INSTALLATION_PATH . '/public/' . $page
+        return OpenEmr::webRoot() . Bootstrap::MODULE_INSTALLATION_PATH . '/public/' . $page
             . ($query === [] ? '' : '?' . http_build_query($query));
     }
 }

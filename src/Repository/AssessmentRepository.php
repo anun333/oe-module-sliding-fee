@@ -17,8 +17,8 @@ declare(strict_types=1);
 namespace OpenHealthcare\SlidingFee\Repository;
 
 use OpenEMR\Common\Database\QueryUtils;
-use OpenEMR\Core\OEGlobalsBag;
 use OpenHealthcare\SlidingFee\Domain\Assessment;
+use OpenHealthcare\Common\OpenEmr;
 
 final class AssessmentRepository
 {
@@ -87,7 +87,7 @@ final class AssessmentRepository
         // Demographics take the family's figures. A minor assessed on their own resources keeps the
         // family's: the minor's own income isn't the family's, and the visit is confidential.
         if ($a->method !== Assessment::DECLINED && $a->annualIncome !== null && $a->familySize !== null && $a->basis !== Assessment::OWN_RESOURCES) {
-            require_once OEGlobalsBag::getInstance()->getSrcDir() . '/patient.inc.php';
+            require_once OpenEmr::srcDir() . '/patient.inc.php';
             updatePatientData($a->pid, [
                 'family_size' => (string)$a->familySize,
                 'monthly_income' => number_format($a->annualIncome / 12, 2, '.', ''),

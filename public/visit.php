@@ -22,13 +22,13 @@ use OpenEMR\Common\Database\QueryUtils;
 use OpenEMR\Common\Logging\EventAuditLogger;
 use OpenEMR\Common\Session\SessionWrapperFactory;
 use OpenEMR\Core\Header;
-use OpenEMR\Core\OEGlobalsBag;
 use OpenHealthcare\SlidingFee\Context;
 use OpenHealthcare\SlidingFee\Domain\Assessment;
 use OpenHealthcare\SlidingFee\Domain\VisitDiscount;
 use OpenHealthcare\SlidingFee\Labels;
 use OpenHealthcare\SlidingFee\Repository\AssessmentRepository;
 use OpenHealthcare\SlidingFee\Repository\VisitRepository;
+use OpenHealthcare\Common\OpenEmr;
 
 // The discount is posted at checkout: the same check as checkout.
 if (!AclMain::aclCheckCore('acct', 'bill', '', 'write')) {
@@ -56,7 +56,7 @@ $placed = $inForce?->on($schedule, $context->guidelines);
 $result = VisitDiscount::compute($schedule, $placed, $visit['fees'], $visit['insurancePaid'], $visit['insuranceAdjusted'],
     $visit['patientPaid'], $visit['patientAdjusted'], $visit['slidingAdjusted'], $visit['insured'], $visit['settled']);
 $reason = $schedule->reasons[0] ?? '';
-$discountReasonAtCheckout = is_file(OEGlobalsBag::getInstance()->getProjectDir() . '/src/Billing/CheckoutDiscountReason.php');
+$discountReasonAtCheckout = is_file(OpenEmr::projectDir() . '/src/Billing/CheckoutDiscountReason.php');
 ?>
 <!DOCTYPE html>
 <?php // The module's own text is written in English. ?>
