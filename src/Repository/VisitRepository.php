@@ -70,6 +70,29 @@ final class VisitRepository
     }
 
     /**
+     * The products sold at a visit (core's drug_sales, sales only), each with its fee and whether core marks
+     * it as a contraceptive: a CYP factor (couple-years of protection), which only contraceptive methods have.
+     *
+     * @return list<array{drugId: int, name: string, fee: float, contraceptive: bool}>
+     */
+    public function products(int $pid, int $encounter): array
+    {
+        $rows = QueryUtils::fetchRecords(
+            "SELECT s.`drug_id`, COALESCE(d.`name`, '') AS name, SUM(s.`fee`) AS fee, MAX(COALESCE(d.`cyp_factor`, 0)) AS cyp
+               FROM `drug_sales` s LEFT JOIN `drugs` d ON d.`drug_id` = s.`drug_id`
+              WHERE s.`pid` = ? AND s.`encounter` = ? AND s.`trans_type` = 1
+              GROUP BY s.`drug_id`, d.`name` ORDER BY d.`name`",
+            [$pid, $encounter],
+        );
+        return array_map(static fn(array $r): array => [
+            'drugId' => (int)$r['drug_id'],
+            'name' => (string)$r['name'],
+            'fee' => (float)$r['fee'],
+            'contraceptive' => (float)$r['cyp'] > 0,
+        ], $rows);
+    }
+
+    /**
      * SQL that's true for an ar_activity row that posts a sliding fee discount, with its binds: a patient-side
      * adjustment (payer_type 0) whose memo is one of the Adjustment Reasons. With no reason set it's never true;
      * before 0.4.4 an empty list became `memo IN ('')`, which counted every adjustment with an empty memo,

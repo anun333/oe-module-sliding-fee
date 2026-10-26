@@ -32,6 +32,7 @@ use OpenHealthcare\SlidingFee\Repository\AssessmentRepository;
 use OpenHealthcare\SlidingFee\Repository\VisitRepository;
 use OpenHealthcare\Common\OpenEmr;
 use OpenHealthcare\SlidingFee\Guide;
+use OpenHealthcare\SlidingFee\Page;
 
 // Recording an assessment writes Demographics: the same check as the Demographics editor.
 if (!AclMain::aclCheckCore('patients', 'demo', '', 'write')) {
@@ -41,7 +42,23 @@ $session = SessionWrapperFactory::getInstance()->getActiveSession();
 $pid = (int)($_GET['pid'] ?? $session->get('pid') ?? 0);
 $patient = QueryUtils::fetchRecords('SELECT `pid`, `fname`, `lname`, `DOB`, `pubpid`, `family_size`, `monthly_income` FROM `patient_data` WHERE `pid` = ?', [$pid])[0] ?? null;
 if ($patient === null) {
-    die(xlt('No such patient.'));
+    ?>
+<!DOCTYPE html>
+<html lang="<?php echo attr(Page::lang()); ?>" dir="<?php echo attr(Page::dir()); ?>">
+<head>
+    <title><?php echo xlt('Sliding Fee Discount'); ?></title>
+    <?php Header::setupHeader(); ?>
+    <?php echo \OpenHealthcare\SlidingFee\Contrast::style(); ?>
+</head>
+<body class="body_top">
+<div class="container-fluid py-3">
+    <h1 class="h4"><?php echo xlt('Sliding Fee Discount'); ?></h1>
+    <div class="alert alert-warning" role="alert" data-state="error"><?php echo xlt('No such patient.'); ?></div>
+</div>
+</body>
+</html>
+    <?php
+    return;
 }
 $context = Context::load();
 $schedule = $context->schedule;
@@ -93,8 +110,7 @@ $visits = $canBill ? (new VisitRepository())->recent($pid) : [];
 $monthly = is_numeric($patient['monthly_income'] ?? null) ? (float)$patient['monthly_income'] : null;
 ?>
 <!DOCTYPE html>
-<?php // The module's own text is written in English. ?>
-<html lang="en">
+<html lang="<?php echo attr(Page::lang()); ?>" dir="<?php echo attr(Page::dir()); ?>">
 <head>
     <title><?php echo xlt('Sliding Fee Discount'); ?></title>
     <?php Header::setupHeader(); ?>

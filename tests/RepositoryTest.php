@@ -79,4 +79,34 @@ final class RepositoryTest extends TestCase
         (new EvaluationRepository())->visits(new \DateTimeImmutable('2026-01-01'), new \DateTimeImmutable('2026-12-31'), ['SFD']);
         $this->assertStringContainsString('a.`payer_type` = 0 AND a.`memo` IN (?)', QueryUtils::$calls[1]['sql']);
     }
+
+    public function testAVisitsProductsAreItsSalesWithCoresContraceptiveMark(): void
+    {
+        QueryUtils::$results = [[
+            ['drug_id' => 5, 'name' => 'Oral contraceptive', 'fee' => '30.00', 'cyp' => '0.0667'],
+            ['drug_id' => 6, 'name' => 'Vitamins', 'fee' => '20.00', 'cyp' => '0'],
+        ]];
+        $products = (new VisitRepository())->products(7, 501);
+        $this->assertSame([
+            ['drugId' => 5, 'name' => 'Oral contraceptive', 'fee' => 30.0, 'contraceptive' => true],
+            ['drugId' => 6, 'name' => 'Vitamins', 'fee' => 20.0, 'contraceptive' => false],
+        ], $products);
+        $this->assertStringContainsString('`trans_type` = 1', QueryUtils::$calls[0]['sql'], 'sales only, not purchases, returns or transfers');
+        $this->assertSame([7, 501], QueryUtils::$calls[0]['binds']);
+    }
+
+    public function testTheEvaluationsProductsAreKeyedByVisit(): void
+    {
+        QueryUtils::$results = [[
+            ['pid' => 7, 'encounter' => 501, 'drug_id' => 5, 'fee' => '30.00', 'cyp' => '1'],
+            ['pid' => 7, 'encounter' => 501, 'drug_id' => 6, 'fee' => '20.00', 'cyp' => '0'],
+            ['pid' => 8, 'encounter' => 9, 'drug_id' => 5, 'fee' => '15.00', 'cyp' => '1'],
+        ]];
+        $byVisit = (new EvaluationRepository())->productsByVisit(new \DateTimeImmutable('2026-01-01'), new \DateTimeImmutable('2026-12-31'));
+        $this->assertSame(['7:501', '8:9'], array_keys($byVisit));
+        $this->assertCount(2, $byVisit['7:501']);
+        $this->assertTrue($byVisit['8:9'][0]['contraceptive']);
+        $this->assertStringContainsString('s.`trans_type` = 1', QueryUtils::$calls[0]['sql']);
+        $this->assertSame(['2026-01-01', '2027-01-01'], QueryUtils::$calls[0]['binds']);
+    }
 }

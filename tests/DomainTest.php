@@ -298,6 +298,43 @@ final class DomainTest extends TestCase
         $this->assertTrue($familyPlanning->isTitleX(), 'a service schedule keeps its own rules');
     }
 
+    public function testOnTitleXRulesTheVisitsContraceptiveProductsAreDiscounted(): void
+    {
+        $products = [
+            ['drugId' => 5, 'fee' => 30.0, 'contraceptive' => true],
+            ['drugId' => 6, 'fee' => 20.0, 'contraceptive' => false],
+            ['drugId' => 7, 'fee' => 10.0, 'contraceptive' => false],
+        ];
+        $titleX = Schedule::fromArray(['contraceptiveProducts' => [7]] + self::titleX()->toArray());
+        $this->assertTrue($titleX->discountsProduct(5, true), 'a product with a CYP factor counts');
+        $this->assertTrue($titleX->discountsProduct(7, false), 'a product the schedule lists counts');
+        $this->assertFalse($titleX->discountsProduct(6, false), 'another product does not');
+        $this->assertSame(40.0, $titleX->discountedProductFees($products));
+
+        $hrsa = self::schedule();
+        $this->assertFalse($hrsa->discountsProduct(5, true), 'HRSA rules discount no products');
+        $this->assertSame(0.0, $hrsa->discountedProductFees($products));
+
+        // A $100 visit with those products: at or below 100% the client pays nothing, products included;
+        // in class A (75% off) they pay a quarter of the $140, not of the $100.
+        $fees = 100.0 + $titleX->discountedProductFees($products);
+        $low = new Assessment(1, 7, new \DateTimeImmutable('2026-10-01'), Assessment::DOCUMENTS, 10000, 1, 60.0, Schedule::AT_OR_BELOW_100);
+        $result = VisitDiscount::compute($titleX, $low, $fees, 0, 0, 0, 0, 0, false, true);
+        $this->assertSame([0.0, 140.0], [$result['charge'], $result['post']]);
+        $a = new Assessment(2, 7, new \DateTimeImmutable('2026-10-01'), Assessment::DOCUMENTS, 21000, 1, 140.0, 'A');
+        $this->assertSame(35.0, VisitDiscount::compute($titleX, $a, $fees, 0, 0, 0, 0, 0, false, true)['charge']);
+    }
+
+    public function testTheContraceptiveProductsSurviveStorageOnlyOnTitleXRules(): void
+    {
+        $titleX = Schedule::fromArray(['contraceptiveProducts' => [9, '3', 'x', 0, 3]] + self::titleX()->toArray());
+        $this->assertSame([3, 9], $titleX->contraceptiveProducts, 'ids only, sorted, no duplicates');
+        $this->assertSame([3, 9], Schedule::fromArray($titleX->toArray())->contraceptiveProducts);
+        $main = self::schedule();
+        $this->assertSame([3, 9], $titleX->withProgram($main)->contraceptiveProducts, 'a service schedule keeps its own list');
+        $this->assertSame([], Schedule::fromArray(['contraceptiveProducts' => [9]] + $main->toArray())->contraceptiveProducts, 'HRSA rules keep none');
+    }
+
     private static function guidelines(): PovertyGuidelines
     {
         return PovertyGuidelines::fromFile(__DIR__ . '/../data/poverty-guidelines.json');

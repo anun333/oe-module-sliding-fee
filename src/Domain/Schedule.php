@@ -17,6 +17,12 @@
  * center with a Title X project gives its family planning visits a service schedule on
  * Title X rules.
  *
+ * On Title X rules the discount also covers the visit's contraceptive products: 42 CFR 59.2
+ * counts "FDA-approved contraceptive products" among family planning services, and 59.5(a)(7)
+ * and (8) apply no charge and the discount to services. A product counts when core marks it as
+ * a contraceptive, by a CYP factor (couple-years of protection, which only contraceptive methods
+ * have, and the first test core's IPPF statistics report applies), or when the schedule lists it.
+ *
  * @package   OpenEMR
  * @link      https://www.open-emr.org
  * @author    anun333 <anun333@posteo.net>
@@ -54,6 +60,8 @@ final class Schedule
      * @param string                                                     $name         what staff call a service schedule, such as Dental
      * @param list<int>                                                  $categories   the visit categories a service schedule covers
      * @param string                                                     $rules        HRSA or TITLE_X
+     * @param list<int>                                                  $contraceptiveProducts on Title X rules, products (drugs.drug_id)
+     *        discounted as contraceptives besides those core already marks as contraceptives
      */
     public function __construct(
         public readonly string $region,
@@ -69,6 +77,7 @@ final class Schedule
         public readonly string $name = '',
         public readonly array $categories = [],
         public readonly string $rules = self::HRSA,
+        public readonly array $contraceptiveProducts = [],
     ) {
     }
 
@@ -86,7 +95,33 @@ final class Schedule
     public function withProgram(self $main): self
     {
         return new self($main->region, $main->year, $this->atOrBelow100, $this->nominal, $this->classes, $main->reassessMonths,
-            $this->reasons, $this->otherFundingAbove200, $this->approvedOn, $this->service, $this->name, $this->categories, $this->rules);
+            $this->reasons, $this->otherFundingAbove200, $this->approvedOn, $this->service, $this->name, $this->categories, $this->rules,
+            $this->contraceptiveProducts);
+    }
+
+    /**
+     * Whether this schedule discounts a product sold at the visit: only on Title X rules, and only a
+     * contraceptive, either one core marks as such or one the schedule lists.
+     */
+    public function discountsProduct(int $drugId, bool $coreMarksContraceptive): bool
+    {
+        return $this->isTitleX() && ($coreMarksContraceptive || in_array($drugId, $this->contraceptiveProducts, true));
+    }
+
+    /**
+     * The fees of the visit's products this schedule discounts.
+     *
+     * @param list<array{drugId: int, fee: float, contraceptive: bool}> $products
+     */
+    public function discountedProductFees(array $products): float
+    {
+        $total = 0.0;
+        foreach ($products as $product) {
+            if ($this->discountsProduct($product['drugId'], $product['contraceptive'])) {
+                $total += $product['fee'];
+            }
+        }
+        return round($total, 2);
     }
 
     /**
@@ -176,6 +211,7 @@ final class Schedule
             'name' => $this->name,
             'categories' => $this->categories,
             'rules' => $this->rules,
+            'contraceptiveProducts' => $this->contraceptiveProducts,
         ];
     }
 
@@ -208,6 +244,12 @@ final class Schedule
             static fn(int $c): bool => $c > 0,
         )));
         sort($categories);
+        $rules = in_array($data['rules'] ?? null, self::RULES, true) ? (string)$data['rules'] : self::HRSA;
+        $products = array_values(array_unique(array_filter(
+            array_map(static fn($d): int => is_numeric($d) ? (int)$d : 0, is_array($data['contraceptiveProducts'] ?? null) ? $data['contraceptiveProducts'] : []),
+            static fn(int $d): bool => $d > 0,
+        )));
+        sort($products);
         return new self(
             in_array($data['region'] ?? null, PovertyGuidelines::REGIONS, true) ? (string)$data['region'] : 'contiguous',
             is_numeric($data['year'] ?? null) ? (int)$data['year'] : 0,
@@ -221,7 +263,8 @@ final class Schedule
             preg_match('/^[a-z0-9-]+$/', $service) === 1 ? $service : self::MAIN,
             trim((string)($data['name'] ?? '')),
             $service === self::MAIN ? [] : $categories,
-            in_array($data['rules'] ?? null, self::RULES, true) ? (string)$data['rules'] : self::HRSA,
+            $rules,
+            $rules === self::TITLE_X ? $products : [],
         );
     }
 }

@@ -24,10 +24,12 @@ use OpenEMR\Common\Logging\EventAuditLogger;
 use OpenEMR\Common\Session\SessionWrapperFactory;
 use OpenEMR\Core\Header;
 use OpenHealthcare\SlidingFee\Context;
+use OpenHealthcare\SlidingFee\Domain\DueList;
 use OpenHealthcare\SlidingFee\Domain\Reassessment;
 use OpenHealthcare\SlidingFee\Guide;
 use OpenHealthcare\SlidingFee\Repository\AssessmentRepository;
 use OpenHealthcare\SlidingFee\Repository\VisitRepository;
+use OpenHealthcare\SlidingFee\Page;
 
 // A list of patients and when they were assessed: the same check as reading Demographics.
 if (!AclMain::aclCheckCore('patients', 'demo')) {
@@ -40,10 +42,13 @@ $schedule = $context->schedule;
 $today = new DateTimeImmutable('today');
 $due = [];
 $patients = [];
+$list = DueList::page([], 1);
 if ($schedule !== null) {
     $lastVisits = (new VisitRepository())->lastVisitsSince($today->modify('-12 months'));
     $due = Reassessment::due($lastVisits, (new AssessmentRepository())->forPatients(array_keys($lastVisits)), $today, $schedule->reassessMonths, WINDOW_DAYS);
-    $pids = array_column($due, 'pid');
+    // One page at a time: at clinic scale the list runs to thousands of patients.
+    $list = DueList::page($due, (int)($_GET['page'] ?? 1), (string)($_GET['status'] ?? ''));
+    $pids = array_column($list['rows'], 'pid');
     if ($pids !== []) {
         $rows = QueryUtils::fetchRecords(
             'SELECT `pid`, `fname`, `lname`, `pubpid` FROM `patient_data` WHERE `pid` IN (' . implode(', ', array_fill(0, count($pids), '?')) . ')',
@@ -55,9 +60,10 @@ if ($schedule !== null) {
         $user = $session->get('authUser');
         $group = $session->get('authProvider');
         EventAuditLogger::getInstance()->newEvent('patient-record-select', is_string($user) ? $user : '', is_string($group) ? $group : '', 1,
-            'Sliding Fee Discount: re-assessments due viewed, ' . count($pids) . ' patients, pids: ' . implode(',', $pids));
+            DueList::auditMessage($list['total'], $list['status'], $list['page'], $list['pages'], $pids));
     }
 }
+$pageUrl = static fn(int $page): string => Context::url('due.php', array_filter(['status' => $list['status'], 'page' => $page > 1 ? $page : null]));
 $status = [
     Reassessment::NEVER => xl('Never assessed'),
     Reassessment::EXPIRED => xl('Assessment ran out'),
@@ -66,8 +72,7 @@ $status = [
 $canAssess = AclMain::aclCheckCore('patients', 'demo', '', 'write');
 ?>
 <!DOCTYPE html>
-<?php // The module's own text is written in English. ?>
-<html lang="en">
+<html lang="<?php echo attr(Page::lang()); ?>" dir="<?php echo attr(Page::dir()); ?>">
 <head>
     <title><?php echo xlt('Sliding fee re-assessments due'); ?></title>
     <?php Header::setupHeader(); ?>
@@ -84,11 +89,22 @@ $canAssess = AclMain::aclCheckCore('patients', 'demo', '', 'write');
     <?php } elseif ($due === []) { ?>
         <p id="none"><?php echo xlt('No one is due.'); ?></p>
     <?php } else { ?>
+        <form method="get" action="<?php echo attr(Context::url('due.php')); ?>" class="form-inline mb-2" id="filter">
+            <label class="mr-2" for="status"><?php echo xlt('Status'); ?></label>
+            <select class="form-control form-control-sm mr-2" id="status" name="status">
+                <option value=""><?php echo text(sprintf(xl('Everyone due (%1$s)'), count($due))); ?></option>
+                <?php foreach (DueList::STATUSES as $s) { ?>
+                    <option value="<?php echo attr($s); ?>" <?php echo $list['status'] === $s ? 'selected' : ''; ?>><?php echo text(sprintf(xl('%1$s (%2$s)'), $status[$s], $list['counts'][$s])); ?></option>
+                <?php } ?>
+            </select>
+            <button type="submit" class="btn btn-sm btn-primary"><?php echo xlt('Show'); ?></button>
+        </form>
+        <p class="small" id="showing" data-total="<?php echo attr((string)$list['total']); ?>"><?php echo text(sprintf(xl('Showing %1$s to %2$s of %3$s'), $list['first'], $list['last'], $list['total'])); ?></p>
         <table class="table table-sm w-auto" id="due">
             <thead><tr><th><?php echo xlt('Patient'); ?></th><th><?php echo xlt('ID'); ?></th><th><?php echo xlt('Status'); ?></th>
                 <th><?php echo xlt('Last assessed'); ?></th><th><?php echo xlt('Re-assess by'); ?></th><th><?php echo xlt('Last visit'); ?></th></tr></thead>
             <tbody>
-            <?php foreach ($due as $row) {
+            <?php foreach ($list['rows'] as $row) {
                 $p = $patients[$row['pid']] ?? ['fname' => '', 'lname' => '', 'pubpid' => '']; ?>
                 <tr data-pid="<?php echo attr((string)$row['pid']); ?>" data-status="<?php echo attr($row['status']); ?>">
                     <td><?php if ($canAssess) { ?><a href="<?php echo attr(Context::url('patient.php', ['pid' => $row['pid']])); ?>"><?php } ?><?php echo text(trim($p['lname'] . ', ' . $p['fname'], ', ')); ?><?php if ($canAssess) { ?></a><?php } ?></td>
@@ -101,6 +117,23 @@ $canAssess = AclMain::aclCheckCore('patients', 'demo', '', 'write');
             <?php } ?>
             </tbody>
         </table>
+        <?php if ($list['pages'] > 1) { ?>
+            <nav aria-label="<?php echo attr(xl('Pages of the list')); ?>" id="pages">
+                <ul class="pagination pagination-sm">
+                    <?php if ($list['page'] === 1) { ?>
+                        <li class="page-item disabled"><span class="page-link"><?php echo xlt('Previous'); ?></span></li>
+                    <?php } else { ?>
+                        <li class="page-item"><a class="page-link" rel="prev" href="<?php echo attr($pageUrl($list['page'] - 1)); ?>"><?php echo xlt('Previous'); ?></a></li>
+                    <?php } ?>
+                    <li class="page-item active" aria-current="page"><span class="page-link"><?php echo text(sprintf(xl('Page %1$s of %2$s'), $list['page'], $list['pages'])); ?></span></li>
+                    <?php if ($list['page'] === $list['pages']) { ?>
+                        <li class="page-item disabled"><span class="page-link"><?php echo xlt('Next'); ?></span></li>
+                    <?php } else { ?>
+                        <li class="page-item"><a class="page-link" rel="next" href="<?php echo attr($pageUrl($list['page'] + 1)); ?>"><?php echo xlt('Next'); ?></a></li>
+                    <?php } ?>
+                </ul>
+            </nav>
+        <?php } ?>
     <?php } ?>
 </div>
 </body>

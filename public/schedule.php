@@ -25,6 +25,7 @@ use OpenHealthcare\SlidingFee\Domain\PovertyGuidelines;
 use OpenHealthcare\SlidingFee\Domain\Schedule;
 use OpenHealthcare\SlidingFee\Domain\ScheduleCheck;
 use OpenHealthcare\SlidingFee\Guide;
+use OpenHealthcare\SlidingFee\Page;
 
 if (!AclMain::aclCheckCore('admin', 'super')) {
     AccessDeniedHelper::denyWithTemplate('ACL check failed for admin/super: Sliding Fee Discount schedule', xl('Sliding Fee Discount'));
@@ -82,6 +83,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         'name' => $isMain ? '' : $name,
         'categories' => is_array($_POST['categories'] ?? null) ? $_POST['categories'] : [],
         'rules' => $_POST['rules'] ?? '',
+        'contraceptiveProducts' => is_array($_POST['contraceptiveProducts'] ?? null) ? $_POST['contraceptiveProducts'] : [],
     ]);
     $problems = [];
     if (!$isMain) {
@@ -141,8 +143,7 @@ $reasons = $context->schedules->adjustmentReasons();
 $number = static fn(mixed $v): string => is_float($v) || is_int($v) ? rtrim(rtrim(number_format((float)$v, 2, '.', ''), '0'), '.') : (string)$v;
 ?>
 <!DOCTYPE html>
-<?php // The module's own text is written in English. ?>
-<html lang="en">
+<html lang="<?php echo attr(Page::lang()); ?>" dir="<?php echo attr(Page::dir()); ?>">
 <head>
     <title><?php echo xlt('Sliding fee schedule'); ?></title>
     <?php Header::setupHeader(); ?>
@@ -244,6 +245,25 @@ $number = static fn(mixed $v): string => is_float($v) || is_int($v) ? rtrim(rtri
             </select>
             <small id="rules-help" class="form-text text-muted"><?php echo xlt('Title X: no charge at or below 100%, discounts to 250%, fees that recover reasonable cost above it. A health center with a Title X project gives its family planning visits a service schedule on Title X rules.'); ?></small>
         </div>
+
+        <?php $products = $context->schedules->products(); ?>
+        <?php if ($products !== []) { ?>
+        <fieldset class="form-group" aria-describedby="products-help">
+            <legend class="h6"><?php echo xlt('Contraceptive products discounted on Title X rules'); ?></legend>
+            <small id="products-help" class="form-text text-muted mb-1"><?php echo xlt('Title X counts contraceptive products as family planning services (42 CFR 59.2), so on Title X rules the contraceptive products sold at a visit are discounted with its other charges. Products with a CYP factor in Inventory are counted already; tick any other contraceptive products. Used only on Title X rules.'); ?></small>
+            <?php foreach ($products as $product) { ?>
+                <div class="form-check">
+                    <?php if ($product['contraceptive']) { ?>
+                        <input class="form-check-input" type="checkbox" id="product-<?php echo attr((string)$product['drugId']); ?>" checked disabled>
+                        <label class="form-check-label" for="product-<?php echo attr((string)$product['drugId']); ?>"><?php echo text($product['name']); ?> <span class="text-muted">(<?php echo xlt('has a CYP factor'); ?>)</span></label>
+                    <?php } else { ?>
+                        <input class="form-check-input" type="checkbox" name="contraceptiveProducts[]" id="product-<?php echo attr((string)$product['drugId']); ?>" value="<?php echo attr((string)$product['drugId']); ?>" <?php echo in_array($product['drugId'], $form->contraceptiveProducts, true) ? 'checked' : ''; ?>>
+                        <label class="form-check-label" for="product-<?php echo attr((string)$product['drugId']); ?>"><?php echo text($product['name']); ?></label>
+                    <?php } ?>
+                </div>
+            <?php } ?>
+        </fieldset>
+        <?php } ?>
 
         <fieldset class="form-group">
             <legend class="h6"><?php echo xlt('At or below 100% of the guidelines'); ?></legend>

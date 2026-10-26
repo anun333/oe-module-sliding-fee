@@ -66,6 +66,21 @@ final class ScheduleRepository
         return $out;
     }
 
+    /**
+     * The clinic's active products, for a Title X schedule's list of contraceptive products, each with
+     * whether core already marks it as a contraceptive (a CYP factor).
+     *
+     * @return list<array{drugId: int, name: string, contraceptive: bool}>
+     */
+    public function products(): array
+    {
+        return array_map(static fn(array $r): array => [
+            'drugId' => (int)$r['drug_id'],
+            'name' => (string)$r['name'],
+            'contraceptive' => (float)$r['cyp_factor'] > 0,
+        ], QueryUtils::fetchRecords('SELECT `drug_id`, `name`, `cyp_factor` FROM `drugs` WHERE `active` = 1 ORDER BY `name`, `drug_id`'));
+    }
+
     public function save(Schedule $schedule, int $userId): int
     {
         return (int)QueryUtils::sqlInsert(

@@ -10,9 +10,11 @@ It covers four things:
 
 It posts nothing to accounts: staff post each discount, with its Adjustment Reason, where they post adjustments now.
 
-The discount applies to the visit's fee sheet charges. Products sold at checkout, such as contraceptive supplies dispensed on site, aren't in that total and are never discounted; HRSA's program doesn't require it for prescription drugs, but Title X counts FDA-approved contraceptive products as family planning services (42 CFR 59.2), so a Title X site should discount them by hand for now.
+The discount applies to the visit's fee sheet charges. On a Title X schedule it also covers the contraceptive products sold at the visit (0.5.0): Title X counts FDA-approved contraceptive products as family planning services (42 CFR 59.2), and 59.5(a)(7) and (8) apply no charge and the discount to services. A product counts when it has a CYP factor in Inventory (couple-years of protection, which only contraceptive methods have, and the first test OpenEMR's own IPPF statistics report applies), or when the Title X schedule lists it. Other products sold at checkout aren't in the total and are never discounted; HRSA's program doesn't require it for prescription drugs.
 
-> **Status: 0.4.4, a pre-release. This module needs OpenEMR 8.1.0 or later; on an older release it stays switched off.** Tested on OpenEMR 8.4.1 with synthetic data only. The schedule, the discount arithmetic and HRSA's rules are as read on 2026-10-18; check them against your board-approved policy before staff rely on them.
+Each page declares the signed-in user's OpenEMR language and writing direction (0.5.0), so a screen reader reads a translated page in its own language.
+
+> **Status: 0.5.0, a pre-release. This module needs OpenEMR 8.1.0 or later; on an older release it stays switched off.** Tested on OpenEMR 8.4.1 with synthetic data only. The schedule, the discount arithmetic and HRSA's rules are as read on 2026-10-18; check them against your board-approved policy before staff rely on them.
 
 What installing it changes in your database, what it reads and writes, and what it hooks into are listed in [FOOTPRINT.md](FOOTPRINT.md), generated from the source.
 
@@ -53,6 +55,8 @@ Using the module day to day, task by task for each role: see [GUIDE.md](GUIDE.md
   | A warning for a discount above 250%, where fees recover the reasonable cost | 59.5(a)(8) |
   | Discounts that shrink as income rises, and the newest guidelines year loaded | as for HRSA |
 
+  - **Contraceptive products (0.5.0):** on a Title X schedule, the contraceptive products sold at a visit (OpenEMR's product sales, sales only) join its charges for the discount, on the visit page and in the evaluation. A product with a CYP factor in Inventory counts already; the schedule page lists the clinic's other active products to tick as contraceptives, for a site that hasn't set CYP factors. Products are never discounted on HRSA rules.
+
   HRSA's own checks (three classes to 200%, no discount above 200%, board approval) don't apply to a Title X schedule. The insured cap of 59.5(a)(8)(ii), no more in copays than the discount schedule charges at or below 250%, is how every visit's discount already works (element k).
 - **Assessment** (from the patient's dashboard card):
   - **Recorded:** annual income, family size, the date, and how it was documented (documents seen, self-declared, or declined), with a note.
@@ -70,7 +74,7 @@ Using the module day to day, task by task for each role: see [GUIDE.md](GUIDE.md
   - **What it's for:** element l asks for this data at least once every three years, with other data such as patient surveys.
   - **How visits are placed:** each visit goes in the pay class of the assessment in force on its date, on the schedule in use. Visits with no assessment, or a declined one, have rows of their own.
 
-- **Re-assessments due:** patients seen in the last 12 months whose assessment runs out within 30 days, has run out, or who were never assessed. Each opens the patient's assessments.
+- **Re-assessments due:** patients seen in the last 12 months whose assessment runs out within 30 days, has run out, or who were never assessed. Each opens the patient's assessments. The list comes 200 at a time, all of them or one status, with each status's count.
 - **With Clinic Forms (0.3.0):** Clinic Forms' sliding fee notice prints the discounts of the schedule in force. For household sizes 1 to 8, it gives the income up to which the full discount applies (100% of the guideline) and up to which a partial one does (the highest pay class), in English or Spanish, saying which year's guidelines. The patient page links to Clinic Forms with the application and the notice ticked and the patient filled in. Without Clinic Forms, nothing changes here.
 
 ## Posting the discount
@@ -96,7 +100,7 @@ Each page makes the same check as the OpenEMR page it stands beside, and nothing
 | Re-assessments due | `patients/demo` | reading Demographics |
 | Dashboard card | `patients/demo` | the dashboard's other cards |
 
-Viewing a patient's assessments, a visit's discount or the re-assessments due list, and recording an assessment, are written to OpenEMR's audit log.
+Viewing a patient's assessments, a visit's discount or the re-assessments due list, and recording an assessment, are written to OpenEMR's audit log. A page of the due list is logged with how many are due, the status chosen and the page, and the patients on that page.
 
 ## Not done yet
 
@@ -112,6 +116,8 @@ composer require anun333/oe-module-sliding-fee
 ```
 
 Then in OpenEMR, Modules › Manage Modules: Register, Install and Enable **Sliding Fee Discount**. Set up the schedule from your board-approved policy before assessing patients.
+
+Copying the module in by hand instead, with its own `vendor` folder: every module installed that way must carry the same version of the shared library, openhealthcare-common, because the first copy OpenEMR loads serves every module. Composer keeps one copy for all of them, so this only matters for a manual install. (A page that finds an older copy loaded first still opens, in English.)
 
 ## Compatibility
 

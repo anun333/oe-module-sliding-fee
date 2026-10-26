@@ -26,6 +26,7 @@ use OpenHealthcare\SlidingFee\Guide;
 use OpenHealthcare\SlidingFee\Labels;
 use OpenHealthcare\SlidingFee\Repository\AssessmentRepository;
 use OpenHealthcare\SlidingFee\Repository\EvaluationRepository;
+use OpenHealthcare\SlidingFee\Page;
 
 // It reads payments and adjustments: the same check as the Collections report.
 if (!AclMain::aclCheckCore('acct', 'rep_a')) {
@@ -50,6 +51,13 @@ if ($schedule !== null) {
         $repo->visits($from, $to, $schedule->reasons),
         static fn(array $v): bool => $context->scheduleFor($v['category'])?->service === $service,
     ));
+    if ($schedule->isTitleX()) {
+        // On Title X rules a visit's contraceptive products are among its charges (42 CFR 59.2), as on the visit page.
+        $products = $repo->productsByVisit($from, $to);
+        foreach ($visits as $i => $v) {
+            $visits[$i]['fees'] += $schedule->discountedProductFees($products[$v['pid'] . ':' . $v['encounter']] ?? []);
+        }
+    }
     $pids = array_values(array_unique(array_map(static fn(array $v): int => $v['pid'], $visits)));
     $rows = Evaluation::byClass($schedule, $context->guidelines, $visits, (new AssessmentRepository())->forPatients($pids));
     $recorded = $repo->assessmentsRecorded($from, $to);
@@ -73,8 +81,7 @@ if (($_GET['format'] ?? '') === 'csv' && $schedule !== null) {
 }
 ?>
 <!DOCTYPE html>
-<?php // The module's own text is written in English. ?>
-<html lang="en">
+<html lang="<?php echo attr(Page::lang()); ?>" dir="<?php echo attr(Page::dir()); ?>">
 <head>
     <title><?php echo xlt('Sliding fee evaluation'); ?></title>
     <?php Header::setupHeader(); ?>

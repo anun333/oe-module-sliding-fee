@@ -26,6 +26,8 @@ The module works out what each patient's discount should be; it posts nothing to
 
 Patients seen in the last 12 months whose assessment runs out soon, has run out, or who were never assessed. The **Status** column says which: **Runs out soon**, **Assessment ran out** or **Never assessed**. Open a patient to record a new assessment.
 
+The list shows 200 patients at a time; **Next** goes on. To work through one group, choose it under **Status**, with its count beside it, and press **Show**.
+
 ## Billing staff
 
 ### Work out the discount for a visit
@@ -41,7 +43,7 @@ The page shows the pay class on the date of service, the charges at full fee, wh
 - If insurance hasn't finished with the visit, the discount waits until it has; the page shows the most the patient pays meanwhile, copay included.
 - With no assessment in force on the date of service, no discount applies: assess the patient first.
 - Prescription drugs, eyeglasses and dentures aren't covered by the sliding fee discount program.
-- Products sold at checkout, such as contraceptive supplies dispensed on site, aren't in the fee total. A Title X site should discount contraceptive products by hand for now: Title X counts them as family planning services (42 CFR 59.2).
+- Products sold at checkout aren't in the fee total, except on a Title X schedule: there the visit's contraceptive products are discounted with its charges and show as **Contraceptive products at full fee** (Title X counts them as family planning services, 42 CFR 59.2).
 
 ## The administrator
 
@@ -63,6 +65,8 @@ HRSA allows more than one schedule only by service or delivery method, such as m
 *Where:* **Schedule** › **Add a schedule for a service**.
 
 Give the **Name of the service**, tick the **Visit categories this schedule covers**, set its pay classes and reasons as above, and **Check and save**. It takes the guidelines and the re-assessment period from the main schedule. A health center with a Title X project gives its family planning visits a service schedule on Title X rules.
+
+On a schedule on Title X rules, check the list **Contraceptive products discounted on Title X rules**: a product with a CYP factor in Inventory is ticked already; tick any other contraceptive products the clinic sells, so they're discounted with the visit's charges.
 
 ## The manager
 

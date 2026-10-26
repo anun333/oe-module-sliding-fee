@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.0 (unreleased)
+
+- **Title X: contraceptive products are discounted with the visit.** 42 CFR 59.2 counts "FDA-approved contraceptive products" among family planning services, and 59.5(a)(7) and (8) apply no charge and the sliding discount to services, so on a Title X schedule the contraceptive products sold at a visit (OpenEMR's product sales, sales only) now join its charges, on the visit page (a **Contraceptive products at full fee** line) and in the evaluation. A product counts when it has a CYP factor in Inventory (couple-years of protection, which only contraceptive methods have, and the first test OpenEMR's own IPPF statistics report applies), or when the Title X schedule lists it: the schedule page lists the clinic's active products, those with a CYP factor already counted, for a site that hasn't set CYP factors. Products are still never discounted on HRSA rules. This replaces 0.4.4's advice to discount them by hand.
+- **The re-assessments due list comes 200 at a time,** with how many are due, each status's count, a status filter and Previous and Next. It used to send every patient due at once: about 15,500 rows and 6.5 MB on a 20,000-patient test site. Its audit entry now gives the count, the status chosen and the page, and names only the patients on that page, rather than every patient due. The list has no download, so nothing else needed the whole list.
+- **A missing visit, patient or schedule shows a message inside the page,** with its title and language, instead of a bare line of text (the visit and patient pages).
+- **Each page declares the signed-in user's OpenEMR language and direction** (openhealthcare-common 1.4.0's `pageLang()`), instead of always English. The call is guarded: where a site's other modules load an older copy of the shared library first, the page says English, as before, rather than stop. The module now requires openhealthcare-common ^1.4.0.
+- **The dashboard card's button is checked as a guide label directly** (the shared library now reads Twig's `|xlt`), so composer.json no longer names it.
+- **Install notes:** on a manual install, every module's copy of the shared library must be the same version, since the first one loaded serves all.
+- **Next:** January's poverty guidelines ship as 0.5.1.
+- **Checked:**
+  - Unit tests: the products' rules on Title X and HRSA schedules, their storage, the visit's and evaluation's product queries (sales only, CYP factor) and the language guard's fallback fail on 0.4.4's code. All 56 tests pass on PHP 8.2 and 8.5.
+  - End to end on OpenEMR 8.4.1 (`dev/sliding_fee_check.py`): a contraceptive with a CYP factor is discounted and another product and a purchase row are not, a product the schedule lists is discounted, the Title X evaluation counts both, a missing visit or patient gets the page's message, and the due list's never-assessed filter shows only those with the summary in the audit log. On 0.4.4's code exactly those seven checks fail.
+  - With an older shared library (1.3.3) loaded first, every page still opens, in English.
+  - The due list's paging, filter and audit summary: unit tests that fail on 0.4.4's code. Measured on 8.4.1 with 3,000 synthetic due patients (3,011 in all), then removed: the page went from 1,310,749 bytes and 3,011 rows to 89,404 bytes and 200 rows, and its audit entry from 21,124 characters naming every patient to about 1,500.
+
 ## 0.4.4 (2026-10-26)
 
 - **Fixed: with no Adjustment Reason ticked, adjustments were counted as discounts already posted.** The schedule check already warns when none is ticked, but until then every adjustment with an empty memo, an insurer's included, counted as a sliding fee discount posted, so the visit page showed a smaller balance and a smaller discount to post, and the evaluation counted discounts nobody posted. With no reason ticked, nothing now counts as a posted discount.

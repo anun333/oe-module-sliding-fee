@@ -22,6 +22,34 @@ use OpenEMR\Common\Database\QueryUtils;
 final class EvaluationRepository
 {
     /**
+     * The products sold at the visits of a period (core's drug_sales, sales only), by "pid:encounter", each with
+     * whether core marks it as a contraceptive (a CYP factor), for a Title X schedule's charges.
+     *
+     * @return array<string, list<array{drugId: int, fee: float, contraceptive: bool}>>
+     */
+    public function productsByVisit(\DateTimeImmutable $from, \DateTimeImmutable $to): array
+    {
+        $rows = QueryUtils::fetchRecords(
+            "SELECT s.`pid`, s.`encounter`, s.`drug_id`, SUM(s.`fee`) AS fee, MAX(COALESCE(d.`cyp_factor`, 0)) AS cyp
+               FROM `drug_sales` AS s
+               JOIN `form_encounter` AS fe ON fe.`pid` = s.`pid` AND fe.`encounter` = s.`encounter`
+               LEFT JOIN `drugs` AS d ON d.`drug_id` = s.`drug_id`
+              WHERE s.`trans_type` = 1 AND fe.`date` >= ? AND fe.`date` < ?
+              GROUP BY s.`pid`, s.`encounter`, s.`drug_id`",
+            [$from->format('Y-m-d'), $to->modify('+1 day')->format('Y-m-d')],
+        );
+        $out = [];
+        foreach ($rows as $r) {
+            $out[(int)$r['pid'] . ':' . (int)$r['encounter']][] = [
+                'drugId' => (int)$r['drug_id'],
+                'fee' => (float)$r['fee'],
+                'contraceptive' => (float)$r['cyp'] > 0,
+            ];
+        }
+        return $out;
+    }
+
+    /**
      * @param list<string> $reasons Adjustment Reasons posted as sliding fee discounts
      * @return list<array{pid: int, encounter: int, date: \DateTimeImmutable, category: int, fees: float, sliding: float}>
      */

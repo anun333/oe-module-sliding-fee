@@ -24,6 +24,7 @@ use OpenHealthcare\SlidingFee\Domain\Schedule;
 use OpenHealthcare\SlidingFee\Domain\ScheduleCheck;
 use OpenHealthcare\SlidingFee\Guide;
 use OpenHealthcare\SlidingFee\Labels;
+use OpenHealthcare\SlidingFee\Page;
 
 if (!AclMain::aclCheckCore('acct', 'bill')) {
     AccessDeniedHelper::denyWithTemplate('ACL check failed for acct/bill: Sliding Fee Discount', xl('Sliding Fee Discount'));
@@ -35,8 +36,7 @@ $findings = $schedule === null ? [] : ScheduleCheck::run($schedule, $context->gu
 $pid = (int)($session->get('pid') ?? 0);
 ?>
 <!DOCTYPE html>
-<?php // The module's own text is written in English. ?>
-<html lang="en">
+<html lang="<?php echo attr(Page::lang()); ?>" dir="<?php echo attr(Page::dir()); ?>">
 <head>
     <title><?php echo xlt('Sliding Fee Discount'); ?></title>
     <?php Header::setupHeader(); ?>
