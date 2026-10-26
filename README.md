@@ -14,6 +14,8 @@ It posts nothing to accounts: staff post each discount, with its Adjustment Reas
 
 What installing it changes in your database, what it reads and writes, and what it hooks into are listed in [FOOTPRINT.md](FOOTPRINT.md), generated from the source.
 
+Using the module day to day, task by task for each role: see [GUIDE.md](GUIDE.md).
+
 ## What it does
 
 - **Fees › Sliding Fee Discount:** the schedule in force, its compliance check, and links to the pages you may open.

@@ -31,6 +31,7 @@ use OpenHealthcare\SlidingFee\Labels;
 use OpenHealthcare\SlidingFee\Repository\AssessmentRepository;
 use OpenHealthcare\SlidingFee\Repository\VisitRepository;
 use OpenHealthcare\Common\OpenEmr;
+use OpenHealthcare\SlidingFee\Guide;
 
 // Recording an assessment writes Demographics: the same check as the Demographics editor.
 if (!AclMain::aclCheckCore('patients', 'demo', '', 'write')) {
@@ -103,6 +104,7 @@ $monthly = is_numeric($patient['monthly_income'] ?? null) ? (float)$patient['mon
 <div class="container-fluid py-3">
     <h1 class="h4"><?php echo xlt('Sliding Fee Discount'); ?>: <?php echo text(trim($patient['lname'] . ', ' . $patient['fname'], ', ')); ?>
         <small class="text-muted"><?php echo xlt('ID'); ?> <?php echo text((string)$patient['pubpid']); ?></small></h1>
+    <p class="small mb-2"><a href="<?php echo attr(Guide::url()); ?>" target="_blank" rel="noopener"><?php echo xlt('Help'); ?><span class="sr-only"> <?php echo xlt('(opens in a new window)'); ?></span></a></p>
 
     <?php if ($schedule === null) { ?>
         <div class="alert alert-warning"><?php echo xlt('The clinic has not set up its sliding fee schedule yet, so no assessment can be placed in a pay class.'); ?></div>

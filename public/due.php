@@ -25,6 +25,7 @@ use OpenEMR\Common\Session\SessionWrapperFactory;
 use OpenEMR\Core\Header;
 use OpenHealthcare\SlidingFee\Context;
 use OpenHealthcare\SlidingFee\Domain\Reassessment;
+use OpenHealthcare\SlidingFee\Guide;
 use OpenHealthcare\SlidingFee\Repository\AssessmentRepository;
 use OpenHealthcare\SlidingFee\Repository\VisitRepository;
 
@@ -75,6 +76,7 @@ $canAssess = AclMain::aclCheckCore('patients', 'demo', '', 'write');
 <body class="body_top">
 <div class="container-fluid py-3">
     <h1 class="h4"><?php echo xlt('Sliding fee re-assessments due'); ?></h1>
+    <p class="small mb-2"><a href="<?php echo attr(Guide::url()); ?>" target="_blank" rel="noopener"><?php echo xlt('Help'); ?><span class="sr-only"> <?php echo xlt('(opens in a new window)'); ?></span></a></p>
     <p class="small text-muted"><?php echo $schedule === null ? '' : text(sprintf(xl('Patients seen in the last 12 months whose assessment runs out within %1$s days, has run out, or who were never assessed. The schedule says to re-assess every %2$s months.'), WINDOW_DAYS, $schedule->reassessMonths)); ?>
         <a href="<?php echo attr(Context::url('index.php')); ?>"><?php echo xlt('Back'); ?></a></p>
     <?php if ($schedule === null) { ?>

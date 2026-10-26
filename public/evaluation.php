@@ -22,6 +22,7 @@ use OpenEMR\Core\Header;
 use OpenHealthcare\SlidingFee\Context;
 use OpenHealthcare\SlidingFee\Domain\Evaluation;
 use OpenHealthcare\SlidingFee\Domain\Schedule;
+use OpenHealthcare\SlidingFee\Guide;
 use OpenHealthcare\SlidingFee\Labels;
 use OpenHealthcare\SlidingFee\Repository\AssessmentRepository;
 use OpenHealthcare\SlidingFee\Repository\EvaluationRepository;
@@ -83,6 +84,7 @@ if (($_GET['format'] ?? '') === 'csv' && $schedule !== null) {
 <body class="body_top">
 <div class="container-fluid py-3">
     <h1 class="h4"><?php echo xlt('Sliding fee discount program evaluation'); ?></h1>
+    <p class="small mb-2"><a href="<?php echo attr(Guide::url()); ?>" target="_blank" rel="noopener"><?php echo xlt('Help'); ?><span class="sr-only"> <?php echo xlt('(opens in a new window)'); ?></span></a></p>
     <p class="small text-muted"><?php echo xlt('Utilization within each pay class, and at or below 100% of the guidelines, as HRSA Chapter 9 element l asks the health center to collect and evaluate at least once every three years, with other data such as patient surveys. Each visit is placed in the pay class of the assessment in force on its date, on the schedule in use now.'); ?>
         <a href="<?php echo attr(Context::url('index.php')); ?>"><?php echo xlt('Back'); ?></a></p>
     <?php if ($schedule === null) { ?>

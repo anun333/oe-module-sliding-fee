@@ -52,7 +52,10 @@
             "footprint-not-covered": [
                 "Whether the permission checks above behave correctly for restricted users. They aren't yet checked end to end with a restricted login; the README says what each page asks for.",
                 "Whether discounts follow the clinic's schedule and HRSA's and Title X's rules. The unit tests in `tests/` cover the rules; the end-to-end check against a running OpenEMR is described in the README."
-            ]
+            ],
+            "guide-labels-elsewhere": {
+                "Assessments and visit discounts": "templates/card.html.twig"
+            }
         }
     }
 }

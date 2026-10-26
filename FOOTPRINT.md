@@ -96,10 +96,10 @@ As written in the source; whether they behave correctly for a given user is not 
 
 | part | files | lines |
 |---|---|---|
-| PHP logic (`src/`) | 17 | 1630 |
-| pages (`public/`) | 6 | 920 |
-| tests (`tests/`, `phpunit.xml.dist`) | 5 | 523 |
-| module wiring | 5 | 173 |
+| PHP logic (`src/`) | 18 | 1665 |
+| pages (`public/`) | 6 | 932 |
+| tests (`tests/`, `phpunit.xml.dist`) | 6 | 556 |
+| module wiring | 5 | 176 |
 | install SQL (`sql/`) | 2 | 58 |
 | data (`data/`, read at runtime) | 1 | 47 |
 | tools (`tools/`) | 1 | 31 |

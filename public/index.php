@@ -22,6 +22,7 @@ use OpenEMR\Core\Header;
 use OpenHealthcare\SlidingFee\Context;
 use OpenHealthcare\SlidingFee\Domain\Schedule;
 use OpenHealthcare\SlidingFee\Domain\ScheduleCheck;
+use OpenHealthcare\SlidingFee\Guide;
 use OpenHealthcare\SlidingFee\Labels;
 
 if (!AclMain::aclCheckCore('acct', 'bill')) {
@@ -44,6 +45,7 @@ $pid = (int)($session->get('pid') ?? 0);
 <body class="body_top">
 <div class="container-fluid py-3">
     <h1 class="h4"><?php echo xlt('Sliding Fee Discount'); ?></h1>
+    <p class="small mb-2"><a href="<?php echo attr(Guide::url()); ?>" target="_blank" rel="noopener"><?php echo xlt('Help'); ?><span class="sr-only"> <?php echo xlt('(opens in a new window)'); ?></span></a></p>
     <p class="small text-muted"><?php echo xlt('A sliding fee discount program as HRSA requires of health centers: the schedule checked against Compliance Manual Chapter 9, income assessments, the discount each visit is owed, and the figures for the program evaluation. It posts nothing to accounts: staff post each discount with its Adjustment Reason.'); ?></p>
 
     <?php if ($schedule === null) { ?>

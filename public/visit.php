@@ -29,6 +29,7 @@ use OpenHealthcare\SlidingFee\Labels;
 use OpenHealthcare\SlidingFee\Repository\AssessmentRepository;
 use OpenHealthcare\SlidingFee\Repository\VisitRepository;
 use OpenHealthcare\Common\OpenEmr;
+use OpenHealthcare\SlidingFee\Guide;
 
 // The discount is posted at checkout: the same check as checkout.
 if (!AclMain::aclCheckCore('acct', 'bill', '', 'write')) {
@@ -70,6 +71,7 @@ $discountReasonAtCheckout = is_file(OpenEmr::projectDir() . '/src/Billing/Checko
 <div class="container-fluid py-3">
     <h1 class="h4"><?php echo xlt('Sliding fee discount for a visit'); ?>: <?php echo text(trim($patient['lname'] . ', ' . $patient['fname'], ', ')); ?>,
         <?php echo text(oeFormatShortDate($visit['date']->format('Y-m-d'))); ?></h1>
+    <p class="small mb-2"><a href="<?php echo attr(Guide::url()); ?>" target="_blank" rel="noopener"><?php echo xlt('Help'); ?><span class="sr-only"> <?php echo xlt('(opens in a new window)'); ?></span></a></p>
     <p><a href="<?php echo attr(Context::url('patient.php', ['pid' => $pid])); ?>"><?php echo xlt('Assessments for this patient'); ?></a></p>
 
     <table class="table table-sm w-auto" id="figures">

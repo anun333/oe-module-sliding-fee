@@ -24,6 +24,7 @@ use OpenHealthcare\SlidingFee\Context;
 use OpenHealthcare\SlidingFee\Domain\PovertyGuidelines;
 use OpenHealthcare\SlidingFee\Domain\Schedule;
 use OpenHealthcare\SlidingFee\Domain\ScheduleCheck;
+use OpenHealthcare\SlidingFee\Guide;
 
 if (!AclMain::aclCheckCore('admin', 'super')) {
     AccessDeniedHelper::denyWithTemplate('ACL check failed for admin/super: Sliding Fee Discount schedule', xl('Sliding Fee Discount'));
@@ -151,6 +152,7 @@ $number = static fn(mixed $v): string => is_float($v) || is_int($v) ? rtrim(rtri
 <body class="body_top">
 <div class="container-fluid py-3">
     <h1 class="h4"><?php echo xlt('Sliding fee schedule'); ?><?php if (!$isMain) { ?>: <?php echo $service === 'new' ? xlt('new service schedule') : text($form->name); ?><?php } ?></h1>
+    <p class="small mb-2"><a href="<?php echo attr(Guide::url()); ?>" target="_blank" rel="noopener"><?php echo xlt('Help'); ?><span class="sr-only"> <?php echo xlt('(opens in a new window)'); ?></span></a></p>
     <?php if ($main !== null) { ?>
     <ul class="nav nav-tabs mb-3" id="schedules">
         <li class="nav-item"><a class="nav-link <?php echo $isMain ? 'active' : ''; ?>" href="<?php echo attr(Context::url('schedule.php')); ?>"><?php echo xlt('Main schedule'); ?></a></li>
