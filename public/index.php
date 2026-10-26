@@ -39,6 +39,7 @@ $pid = (int)($session->get('pid') ?? 0);
 <head>
     <title><?php echo xlt('Sliding Fee Discount'); ?></title>
     <?php Header::setupHeader(); ?>
+    <?php echo \OpenHealthcare\SlidingFee\Contrast::style(); ?>
 </head>
 <body class="body_top">
 <div class="container-fluid py-3">

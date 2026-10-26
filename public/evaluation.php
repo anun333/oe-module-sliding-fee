@@ -77,6 +77,7 @@ if (($_GET['format'] ?? '') === 'csv' && $schedule !== null) {
 <head>
     <title><?php echo xlt('Sliding fee evaluation'); ?></title>
     <?php Header::setupHeader(); ?>
+    <?php echo \OpenHealthcare\SlidingFee\Contrast::style(); ?>
     <style>/* Links in running text are underlined, not told apart by colour alone (WCAG 1.4.1). */ p a, li a { text-decoration: underline; }</style>
 </head>
 <body class="body_top">

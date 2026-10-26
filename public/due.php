@@ -70,6 +70,7 @@ $canAssess = AclMain::aclCheckCore('patients', 'demo', '', 'write');
 <head>
     <title><?php echo xlt('Sliding fee re-assessments due'); ?></title>
     <?php Header::setupHeader(); ?>
+    <?php echo \OpenHealthcare\SlidingFee\Contrast::style(); ?>
 </head>
 <body class="body_top">
 <div class="container-fluid py-3">
