@@ -12,7 +12,7 @@ It posts nothing to accounts: staff post each discount, with its Adjustment Reas
 
 The discount applies to the visit's fee sheet charges. Products sold at checkout, such as contraceptive supplies dispensed on site, aren't in that total and are never discounted; HRSA's program doesn't require it for prescription drugs, but Title X counts FDA-approved contraceptive products as family planning services (42 CFR 59.2), so a Title X site should discount them by hand for now.
 
-> **Status: 0.4.3, a pre-release. This module needs OpenEMR 8.1.0 or later; on an older release it stays switched off.** Tested on OpenEMR 8.4.1 with synthetic data only. The schedule, the discount arithmetic and HRSA's rules are as read on 2026-10-18; check them against your board-approved policy before staff rely on them.
+> **Status: 0.4.4, a pre-release. This module needs OpenEMR 8.1.0 or later; on an older release it stays switched off.** Tested on OpenEMR 8.4.1 with synthetic data only. The schedule, the discount arithmetic and HRSA's rules are as read on 2026-10-18; check them against your board-approved policy before staff rely on them.
 
 What installing it changes in your database, what it reads and writes, and what it hooks into are listed in [FOOTPRINT.md](FOOTPRINT.md), generated from the source.
 

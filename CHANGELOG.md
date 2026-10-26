@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.4 (unreleased)
+## 0.4.4 (2026-10-26)
 
 - **Fixed: with no Adjustment Reason ticked, adjustments were counted as discounts already posted.** The schedule check already warns when none is ticked, but until then every adjustment with an empty memo, an insurer's included, counted as a sliding fee discount posted, so the visit page showed a smaller balance and a smaller discount to post, and the evaluation counted discounts nobody posted. With no reason ticked, nothing now counts as a posted discount.
 - **Fixed: an insurer's adjustment carrying the discount's reason was counted twice,** once as the insurer's adjustment and again as a sliding fee discount. A discount is now only a patient-side adjustment (payer type 0) with one of the reasons, on the visit page and in the evaluation alike.
