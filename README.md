@@ -10,7 +10,7 @@ It covers four things:
 
 It posts nothing to accounts: staff post each discount, with its Adjustment Reason, where they post adjustments now.
 
-> **Status: 0.4.0, a pre-release. This module needs OpenEMR 8.1.0 or later; on an older release it stays switched off.** Tested on OpenEMR 8.4.1 with synthetic data only. The schedule, the discount arithmetic and HRSA's rules are as read on 2026-10-18; check them against your board-approved policy before staff rely on them.
+> **Status: 0.4.1, a pre-release. This module needs OpenEMR 8.1.0 or later; on an older release it stays switched off.** Tested on OpenEMR 8.4.1 with synthetic data only. The schedule, the discount arithmetic and HRSA's rules are as read on 2026-10-18; check them against your board-approved policy before staff rely on them.
 
 What installing it changes in your database, what it reads and writes, and what it hooks into are listed in [FOOTPRINT.md](FOOTPRINT.md), generated from the source.
 
