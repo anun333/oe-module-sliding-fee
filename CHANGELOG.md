@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.3 (unreleased)
+## 0.4.3 (2026-10-26)
 
 - **A staff guide:** [GUIDE.md](GUIDE.md) walks through each task by role, with the labels as the pages show them. **Help** on every page opens it at this version's tag, in a new window.
 - **The guide's labels are checked:** each of the 52 labels GUIDE.md quotes in bold is a string the pages show, or the dashboard card's button, named in composer.json with the template it comes from, so a renamed button fails the tests.
