@@ -41,6 +41,7 @@ The page shows the pay class on the date of service, the charges at full fee, wh
 - If insurance hasn't finished with the visit, the discount waits until it has; the page shows the most the patient pays meanwhile, copay included.
 - With no assessment in force on the date of service, no discount applies: assess the patient first.
 - Prescription drugs, eyeglasses and dentures aren't covered by the sliding fee discount program.
+- Products sold at checkout, such as contraceptive supplies dispensed on site, aren't in the fee total. A Title X site should discount contraceptive products by hand for now: Title X counts them as family planning services (42 CFR 59.2).
 
 ## The administrator
 
@@ -52,7 +53,7 @@ The page shows the pay class on the date of service, the charges at full fee, wh
 2. Choose the **Program rules**: the HRSA Health Center Program, or Title X family planning for a Title X-only clinic.
 3. Under **At or below 100% of the guidelines**, choose **Full discount** or **Nominal charge per visit**.
 4. Under **Pay classes above 100%**, give each class a **Name**, its **Up to (% of guidelines)**, and its **Discount**: **Percent off the fee** or **Flat charge per visit**. Leave a name empty to remove a row.
-5. Tick the **Adjustment Reasons posted as sliding fee discounts**, and enter the **Board approved on** date.
+5. Tick the **Adjustment Reasons posted as sliding fee discounts**, and enter the **Board approved on** date. Until one is ticked, nothing counts as a discount already posted, so the visit page offers the whole discount.
 6. Choose **Check and save**. A schedule with errors isn't saved; the page lists what to fix.
 
 ### Add a schedule for a service

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.4 (unreleased)
+
+- **Fixed: with no Adjustment Reason ticked, adjustments were counted as discounts already posted.** The schedule check already warns when none is ticked, but until then every adjustment with an empty memo, an insurer's included, counted as a sliding fee discount posted, so the visit page showed a smaller balance and a smaller discount to post, and the evaluation counted discounts nobody posted. With no reason ticked, nothing now counts as a posted discount.
+- **Fixed: an insurer's adjustment carrying the discount's reason was counted twice,** once as the insurer's adjustment and again as a sliding fee discount. A discount is now only a patient-side adjustment (payer type 0) with one of the reasons, on the visit page and in the evaluation alike.
+- **Installs on PHP 8.2,** as OpenEMR 8.1.0 does. It asked for PHP 8.3, which refused an install on 8.1.x with PHP 8.2, though nothing in it needs 8.3; it moves to 8.3 with the shared library on 2027-01-01.
+- **Known limit, written down:** products sold at checkout (such as contraceptive supplies dispensed on site) aren't part of the fee total, so they're never discounted. HRSA's program doesn't require it for prescription drugs, but Title X's definition of family planning services (42 CFR 59.2) includes FDA-approved contraceptive products, so a Title X site should discount those by hand for now.
+- **Next:** January's poverty guidelines ship as 0.4.5 (the build order had numbered that 0.4.2, which went to the contrast fix).
+- **Checked:** new unit tests for the discount's condition, on the visit page's and the evaluation's queries, fail on 0.4.3's code. On adjustments planted in a rolled-back transaction on OpenEMR 8.4.1's database, the old query counted 25.00 of an insurer's and a patient's empty-memo adjustments as discounts with no reason ticked, and 37.00 with one (an insurer's 7.00 among them); the new one counts 0.00 and the patient's 30.00. The tests pass on PHP 8.2, 8.3 and 8.5, and every file lints on 8.2.
+
 ## 0.4.3 (2026-10-26)
 
 - **A staff guide:** [GUIDE.md](GUIDE.md) walks through each task by role, with the labels as the pages show them. **Help** on every page opens it at this version's tag, in a new window.

@@ -27,18 +27,18 @@ final class EvaluationRepository
      */
     public function visits(\DateTimeImmutable $from, \DateTimeImmutable $to, array $reasons): array
     {
-        $reasonIn = $reasons === [] ? "''" : implode(', ', array_fill(0, count($reasons), '?'));
+        [$sliding, $slidingBinds] = VisitRepository::slidingRow($reasons, 'a');
         $sql = "SELECT fe.`pid`, fe.`encounter`, fe.`date`, COALESCE(fe.`pc_catid`, 0) AS category,
                 (SELECT COALESCE(SUM(b.`fee`), 0) FROM `billing` AS b
                   WHERE b.`pid` = fe.`pid` AND b.`encounter` = fe.`encounter` AND b.`activity` = 1
                     AND b.`code_type` NOT IN ('COPAY', 'TAX')) AS fees,
                 (SELECT COALESCE(SUM(a.`adj_amount`), 0) FROM `ar_activity` AS a
                   WHERE a.`pid` = fe.`pid` AND a.`encounter` = fe.`encounter` AND a.`deleted` IS NULL
-                    AND a.`memo` IN ($reasonIn)) AS sliding
+                    AND $sliding) AS sliding
             FROM `form_encounter` AS fe
             WHERE fe.`date` >= ? AND fe.`date` < ?
             ORDER BY fe.`date`";
-        $rows = QueryUtils::fetchRecords($sql, [...$reasons, $from->format('Y-m-d'), $to->modify('+1 day')->format('Y-m-d')]);
+        $rows = QueryUtils::fetchRecords($sql, [...$slidingBinds, $from->format('Y-m-d'), $to->modify('+1 day')->format('Y-m-d')]);
         return array_map(static fn(array $r): array => [
             'pid' => (int)$r['pid'],
             'encounter' => (int)$r['encounter'],

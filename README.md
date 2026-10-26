@@ -10,6 +10,8 @@ It covers four things:
 
 It posts nothing to accounts: staff post each discount, with its Adjustment Reason, where they post adjustments now.
 
+The discount applies to the visit's fee sheet charges. Products sold at checkout, such as contraceptive supplies dispensed on site, aren't in that total and are never discounted; HRSA's program doesn't require it for prescription drugs, but Title X counts FDA-approved contraceptive products as family planning services (42 CFR 59.2), so a Title X site should discount them by hand for now.
+
 > **Status: 0.4.3, a pre-release. This module needs OpenEMR 8.1.0 or later; on an older release it stays switched off.** Tested on OpenEMR 8.4.1 with synthetic data only. The schedule, the discount arithmetic and HRSA's rules are as read on 2026-10-18; check them against your board-approved policy before staff rely on them.
 
 What installing it changes in your database, what it reads and writes, and what it hooks into are listed in [FOOTPRINT.md](FOOTPRINT.md), generated from the source.
@@ -127,7 +129,7 @@ Tested with synthetic data on OpenEMR 8.4.1 (Docker image `openemr/openemr:8.4.1
 - produces the evaluation report and its CSV;
 - removes everything and puts Demographics back.
 
-The same check passes on current master (8.5.0-dev, 1faefbbeb9, 2026-10-18). There the visit page says to post the discount at checkout, which records its reason from 8.5. It uses OpenEMR features present since 8.1.0. It installs and its pages load on 8.1.0 and 8.3.0 (above); the full end-to-end check runs on 8.4.1 and master. It needs PHP 8.3 or later.
+The same check passes on current master (8.5.0-dev, 1faefbbeb9, 2026-10-18). There the visit page says to post the discount at checkout, which records its reason from 8.5. It uses OpenEMR features present since 8.1.0. It installs and its pages load on 8.1.0 and 8.3.0 (above); the full end-to-end check runs on 8.4.1 and master. It needs PHP 8.2 or later (8.3 or later once the shared library moves its floor on 2027-01-01), as OpenEMR 8.1.0 does; before 0.4.4 it asked for 8.3, which refused an install on 8.1.x with PHP 8.2.
 
 ## Development
 

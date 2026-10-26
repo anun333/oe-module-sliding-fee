@@ -42,16 +42,16 @@ final class VisitRepository
                FROM `billing` WHERE `pid` = ? AND `encounter` = ? AND `activity` = 1",
             [$pid, $encounter],
         )[0];
-        $reasonIn = $reasons === [] ? "''" : implode(', ', array_fill(0, count($reasons), '?'));
+        [$sliding, $slidingBinds] = self::slidingRow($reasons);
         $posted = QueryUtils::fetchRecords(
             "SELECT
                 COALESCE(SUM(CASE WHEN `payer_type` > 0 THEN `pay_amount` ELSE 0 END), 0) AS ins_paid,
                 COALESCE(SUM(CASE WHEN `payer_type` > 0 THEN `adj_amount` ELSE 0 END), 0) AS ins_adj,
                 COALESCE(SUM(CASE WHEN `payer_type` = 0 THEN `pay_amount` ELSE 0 END), 0) AS pt_paid,
-                COALESCE(SUM(CASE WHEN `payer_type` = 0 AND `memo` NOT IN ($reasonIn) THEN `adj_amount` ELSE 0 END), 0) AS pt_adj,
-                COALESCE(SUM(CASE WHEN `memo` IN ($reasonIn) THEN `adj_amount` ELSE 0 END), 0) AS sliding
+                COALESCE(SUM(CASE WHEN `payer_type` = 0 AND NOT ($sliding) THEN `adj_amount` ELSE 0 END), 0) AS pt_adj,
+                COALESCE(SUM(CASE WHEN $sliding THEN `adj_amount` ELSE 0 END), 0) AS sliding
                FROM `ar_activity` WHERE `pid` = ? AND `encounter` = ? AND `deleted` IS NULL",
-            [...$reasons, ...$reasons, $pid, $encounter],
+            [...$slidingBinds, ...$slidingBinds, $pid, $encounter],
         )[0];
         $levels = $this->insuranceLevels($pid, $date);
         return [
@@ -66,6 +66,27 @@ final class VisitRepository
             'slidingAdjusted' => (float)$posted['sliding'],
             'insured' => $levels > 0,
             'settled' => $levels === 0 || (int)$fe['closed'] >= $levels,
+        ];
+    }
+
+    /**
+     * SQL that's true for an ar_activity row that posts a sliding fee discount, with its binds: a patient-side
+     * adjustment (payer_type 0) whose memo is one of the Adjustment Reasons. With no reason set it's never true;
+     * before 0.4.4 an empty list became `memo IN ('')`, which counted every adjustment with an empty memo,
+     * insurers' included, as a discount already posted.
+     *
+     * @param list<string> $reasons
+     * @return array{0: string, 1: list<string>}
+     */
+    public static function slidingRow(array $reasons, string $alias = ''): array
+    {
+        if ($reasons === []) {
+            return ['0 = 1', []];
+        }
+        $prefix = $alias === '' ? '' : $alias . '.';
+        return [
+            $prefix . '`payer_type` = 0 AND ' . $prefix . '`memo` IN (' . implode(', ', array_fill(0, count($reasons), '?')) . ')',
+            array_values($reasons),
         ];
     }
 
