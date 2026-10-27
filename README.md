@@ -119,6 +119,8 @@ Then in OpenEMR, Modules › Manage Modules: Register, Install and Enable **Slid
 
 Copying the module in by hand instead, with its own `vendor` folder: every module installed that way must carry the same version of the shared library, openhealthcare-common, because the first copy OpenEMR loads serves every module. Composer keeps one copy for all of them, so this only matters for a manual install. (A page that finds an older copy loaded first still opens, in English.)
 
+**After adding, upgrading or removing a module copied in by hand, restart the container (or Apache).** OpenEMR's official Docker images (8.0.0 to 8.5.0) keep in APCu which file holds each class, and each class they didn't find, across requests: until a restart, a class once not found stays not found, and a removed module's classes still point at its folder. An OpenEMR built from source without Composer's `--apcu-autoloader` has no such cache.
+
 ## Compatibility
 
 **PHP security.** PHP's php2shell advisory (2026-10-21; CVE-2026-109618 and CVE-2026-109619) is remote code execution without logging in, and it is being exploited. Run OpenEMR on PHP 8.2.35, 8.3.36, 8.4.27, 8.5.12 or later, whatever the module needs. The official OpenEMR 7.0.2 and 7.0.3 Docker images can't get that fix: they carry PHP 8.2.16 and 8.3.15 on Alpine releases that no longer get updates. Run 7.0 only on a patched PHP, or upgrade OpenEMR. OpenEMR rebuilt its 8.4.1, 8.3.0, 8.2.0 and 8.0.0.3 images with the fix on 2026-10-22 (forum t/27157); a container started before then needs pulling again.
