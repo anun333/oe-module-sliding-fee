@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1 (unreleased)
+
+- **On OpenEMR older than 8.1.0, the module's pages say so instead of showing a blank page.** The module needs 8.1.0 or later and stays switched off below it, but a page opened from a bookmark or a typed address still ran and stopped with an empty HTTP 500. Each page now answers with a short page naming the version the module needs and the site's version (found installing every module on a fresh 7.0.2).
+- **README:** after adding, upgrading or removing a module copied in by hand, restart OpenEMR's container: the official 8.0.0 to 8.5.0 images cache where each class lives, "not found" included.
+- **Guide:** the manager section says another module's page can show the evaluation's discount totals (0.6.0), counted the same way and shown only to staff who can open the evaluation.
+
 ## 0.6.0 (2026-10-26)
 
 - **Figures for other modules' pages.** Through openhealthcare-common 1.5.0's figures contract, another module's page (Revenue Cycle's dashboard, planned) can ask for the sliding fee discounts posted over a period and how many visits have one, for one facility or all, without reading this module's tables. They're counted as the evaluation counts them: patient-side adjustments with one of the schedules' Adjustment Reasons, on visits dated in the period, net of reversals, voided adjustments left out. Each figure links to the evaluation for the same period. They're answered only to users the evaluation admits (`acct/rep_a`) and only with a schedule in force; totals only, never a patient. A failure is logged and the figures left out, so the asking page still opens.
