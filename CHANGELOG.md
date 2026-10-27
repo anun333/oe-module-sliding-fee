@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0 (unreleased)
+## 0.6.0 (2026-10-26)
 
 - **Figures for other modules' pages.** Through openhealthcare-common 1.5.0's figures contract, another module's page (Revenue Cycle's dashboard, planned) can ask for the sliding fee discounts posted over a period and how many visits have one, for one facility or all, without reading this module's tables. They're counted as the evaluation counts them: patient-side adjustments with one of the schedules' Adjustment Reasons, on visits dated in the period, net of reversals, voided adjustments left out. Each figure links to the evaluation for the same period. They're answered only to users the evaluation admits (`acct/rep_a`) and only with a schedule in force; totals only, never a patient. A failure is logged and the figures left out, so the asking page still opens.
 - **The bootstrap also registers the library's contracts under their own prefix,** so where modules copied in by hand carry an older copy of the library that registered first, the figures still answer.
