@@ -77,3 +77,5 @@ On a schedule on Title X rules, check the list **Contraceptive products discount
 Choose **From** and **To** and **Show**. Each row is a pay class, with its patients, visits, charges at full fee and the sliding fee discounts posted, for the evaluation HRSA asks for at least every three years. **Download CSV** saves it.
 
 *What it doesn't do:* it counts only adjustments posted under the reasons ticked in the schedule, and it doesn't collect patient surveys.
+
+Another module's page, such as the Revenue Cycle module's planned dashboard, can show two of these totals for a period and a site: the sliding fee discounts posted and the visits with one. They are counted exactly as this page counts them, shown only to staff who can open this page, totals only, and they link back here.
