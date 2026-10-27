@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.0 (unreleased)
+## 0.5.0 (2026-10-26)
 
 - **Title X: contraceptive products are discounted with the visit.** 42 CFR 59.2 counts "FDA-approved contraceptive products" among family planning services, and 59.5(a)(7) and (8) apply no charge and the sliding discount to services, so on a Title X schedule the contraceptive products sold at a visit (OpenEMR's product sales, sales only) now join its charges, on the visit page (a **Contraceptive products at full fee** line) and in the evaluation. A product counts when it has a CYP factor in Inventory (couple-years of protection, which only contraceptive methods have, and the first test OpenEMR's own IPPF statistics report applies), or when the Title X schedule lists it: the schedule page lists the clinic's active products, those with a CYP factor already counted, for a site that hasn't set CYP factors. Products are still never discounted on HRSA rules. This replaces 0.4.4's advice to discount them by hand.
 - **The re-assessments due list comes 200 at a time,** with how many are due, each status's count, a status filter and Previous and Next. It used to send every patient due at once: about 15,500 rows and 6.5 MB on a 20,000-patient test site. Its audit entry now gives the count, the status chosen and the page, and names only the patients on that page, rather than every patient due. The list has no download, so nothing else needed the whole list.
