@@ -1,1 +1,1 @@
-Sliding Fee Discount v0.6.0
+Sliding Fee Discount v0.6.1
