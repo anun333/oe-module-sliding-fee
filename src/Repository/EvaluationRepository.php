@@ -77,6 +77,30 @@ final class EvaluationRepository
         ], $rows);
     }
 
+    /**
+     * The sliding fee discounts posted on the visits of a period, and how many visits have one: totals for another
+     * module's figures (Figures). Counted as visits() counts them, by the visit's date, net of reversals.
+     *
+     * @param list<string> $reasons Adjustment Reasons posted as sliding fee discounts
+     * @return array{visits: int, amount: float}
+     */
+    public function discountTotals(\DateTimeImmutable $from, \DateTimeImmutable $to, array $reasons, ?int $facilityId = null): array
+    {
+        [$sliding, $slidingBinds] = VisitRepository::slidingRow($reasons, 'a');
+        $row = QueryUtils::fetchRecords(
+            "SELECT COUNT(*) AS visits, COALESCE(SUM(t.`sliding`), 0) AS amount FROM (
+                SELECT a.`pid`, a.`encounter`, SUM(a.`adj_amount`) AS sliding
+                  FROM `ar_activity` AS a
+                  JOIN `form_encounter` AS fe ON fe.`pid` = a.`pid` AND fe.`encounter` = a.`encounter`
+                 WHERE a.`deleted` IS NULL AND $sliding AND fe.`date` >= ? AND fe.`date` < ?"
+                . ($facilityId === null ? '' : ' AND fe.`facility_id` = ?') . "
+                 GROUP BY a.`pid`, a.`encounter`
+                HAVING SUM(a.`adj_amount`) > 0) AS t",
+            [...$slidingBinds, $from->format('Y-m-d'), $to->modify('+1 day')->format('Y-m-d'), ...($facilityId === null ? [] : [$facilityId])],
+        )[0] ?? ['visits' => 0, 'amount' => 0];
+        return ['visits' => (int)$row['visits'], 'amount' => round((float)$row['amount'], 2)];
+    }
+
     /** How many assessments were recorded in the period, and how many of them the patient declined. */
     public function assessmentsRecorded(\DateTimeImmutable $from, \DateTimeImmutable $to): array
     {

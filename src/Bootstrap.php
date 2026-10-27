@@ -15,9 +15,11 @@ declare(strict_types=1);
 
 namespace OpenHealthcare\SlidingFee;
 
+use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Events\Core\TwigEnvironmentEvent;
 use OpenEMR\Events\Patient\Summary\Card\SectionEvent;
 use OpenEMR\Menu\MenuEvent;
+use OpenHealthcare\Common\Contract\Figures\FiguresRequest;
 use OpenHealthcare\SlidingFee\Card\SlidingFeeCard;
 use OpenHealthcare\SlidingFee\Domain\NoticeTable;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -39,6 +41,30 @@ class Bootstrap
         $this->eventDispatcher->addListener(SectionEvent::EVENT_HANDLE, $this->addCard(...));
         // Clinic Forms asks before printing a document; its name, so this module needn't load that one's classes.
         $this->eventDispatcher->addListener('clinic_forms.document.fill', $this->fillNotice(...));
+        // Another module's page asks for figures (openhealthcare-common's figures contract).
+        $this->eventDispatcher->addListener('openhealthcare.figures.request', $this->answerFigures(...));
+    }
+
+    /**
+     * The discounts posted over a period, for another module's page: for users who may run the evaluation (acct/rep_a,
+     * the Collections report's check), and only with a schedule in force. Where an older copy of the shared library
+     * loaded first there's no request to answer. A failure is logged and the figures left out, so the asking page still
+     * opens.
+     */
+    public function answerFigures(object $event): void
+    {
+        if (!class_exists(FiguresRequest::class) || !$event instanceof FiguresRequest || !Figures::asked($event)
+            || !AclMain::aclCheckCore('acct', 'rep_a')) {
+            return;
+        }
+        try {
+            $context = Context::load();
+            if ($context->inForce !== []) {
+                Figures::answer($event, $context->allReasons());
+            }
+        } catch (\Exception $e) {
+            error_log('Sliding Fee Discount: figures not answered: ' . $e->getMessage());
+        }
     }
 
     /**
